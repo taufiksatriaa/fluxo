@@ -1,20 +1,12 @@
 import { Navigate, Route, Routes } from "react-router-dom";
 import { AppLayout } from "./components/AppLayout";
+import { ApprovalsPage } from "./pages/ApprovalsPage";
+import { BudgetsPage } from "./pages/BudgetsPage";
 import { DashboardPage } from "./pages/DashboardPage";
 import { LoginPage } from "./pages/LoginPage";
 import { ProjectsPage } from "./pages/ProjectsPage";
+import { ReportsPage } from "./pages/ReportsPage";
 import { TransactionsPage } from "./pages/TransactionsPage";
-
-function PlaceholderPage({ title }: { title: string }) {
-  return (
-    <div className="container">
-      <div className="card">
-        <h2 style={{ marginTop: 0 }}>{title}</h2>
-        <div className="muted">Template halaman. Nanti kita isi fitur dan integrasi API.</div>
-      </div>
-    </div>
-  );
-}
 
 export default function App() {
   return (
@@ -24,9 +16,9 @@ export default function App() {
         <Route path="/" element={<DashboardPage />} />
         <Route path="/projects" element={<ProjectsPage />} />
         <Route path="/transactions" element={<TransactionsPage />} />
-        <Route path="/approvals" element={<PlaceholderPage title="Approval" />} />
-        <Route path="/budgets" element={<PlaceholderPage title="RAB (Budget)" />} />
-        <Route path="/reports" element={<PlaceholderPage title="Laporan" />} />
+        <Route path="/approvals" element={<ApprovalsPage />} />
+        <Route path="/budgets" element={<BudgetsPage />} />
+        <Route path="/reports" element={<ReportsPage />} />
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>

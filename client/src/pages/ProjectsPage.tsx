@@ -1,25 +1,6 @@
 import { useMemo, useState } from "react";
-
-type ProjectStatus = "PLANNING" | "RUNNING" | "DONE" | "ON_HOLD";
-
-type Project = {
-  id: string;
-  code: string;
-  name: string;
-  owner: string;
-  startDate: string;
-  endDate: string;
-  status: ProjectStatus;
-  progressPct: number;
-  budgetTotal: number;
-  budgetUsed: number;
-  updatedAt: string;
-};
-
-function createId() {
-  if (typeof crypto !== "undefined" && "randomUUID" in crypto) return crypto.randomUUID();
-  return `${Date.now()}_${Math.random().toString(16).slice(2)}`;
-}
+import { calcRabGrandTotal, useAppStore } from "../store/appStore";
+import type { ProjectStatus } from "../store/appStore";
 
 function formatIdr(value: number) {
   return value.toLocaleString("id-ID");
@@ -31,47 +12,8 @@ function clampPct(value: number) {
 }
 
 export function ProjectsPage() {
-  const [projects, setProjects] = useState<Project[]>(() => [
-    {
-      id: "prj-1",
-      code: "PRJ-001",
-      name: "Renovasi Kantor",
-      owner: "PM A",
-      startDate: "2026-03-15",
-      endDate: "2026-04-30",
-      status: "RUNNING",
-      progressPct: 68,
-      budgetTotal: 25000000,
-      budgetUsed: 17300000,
-      updatedAt: "2026-04-04",
-    },
-    {
-      id: "prj-2",
-      code: "PRJ-002",
-      name: "Pembangunan Gudang",
-      owner: "PM B",
-      startDate: "2026-03-01",
-      endDate: "2026-06-30",
-      status: "RUNNING",
-      progressPct: 34,
-      budgetTotal: 80000000,
-      budgetUsed: 22100000,
-      updatedAt: "2026-04-03",
-    },
-    {
-      id: "prj-3",
-      code: "PRJ-003",
-      name: "Implementasi Sistem",
-      owner: "PM C",
-      startDate: "2026-02-01",
-      endDate: "2026-04-10",
-      status: "DONE",
-      progressPct: 100,
-      budgetTotal: 15000000,
-      budgetUsed: 14000000,
-      updatedAt: "2026-04-02",
-    },
-  ]);
+  const { state, actions } = useAppStore();
+  const projects = state.projects;
 
   const [filters, setFilters] = useState<{
     status: "" | ProjectStatus;
@@ -90,14 +32,25 @@ export function ProjectsPage() {
       .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
   }, [filters, projects]);
 
+  const computedRows = useMemo(() => {
+    return filtered.map((p) => {
+      const rab = state.rabsByProjectId[p.id];
+      const budgetTotal = rab ? calcRabGrandTotal(rab) : p.budgetPlanTotal;
+      const budgetUsed = state.transactions
+        .filter((t) => t.projectId === p.id && t.type === "OUT" && t.approvalStatus === "APPROVED")
+        .reduce((sum, t) => sum + t.amount, 0);
+      return { ...p, budgetTotal, budgetUsed };
+    });
+  }, [filtered, state.rabsByProjectId, state.transactions]);
+
   const overall = useMemo(() => {
-    const weightSum = filtered.reduce((sum, p) => sum + (p.budgetTotal || 1), 0);
+    const weightSum = computedRows.reduce((sum, p) => sum + (p.budgetTotal || 1), 0);
     const pct =
       weightSum > 0
-        ? Math.round(filtered.reduce((sum, p) => sum + p.progressPct * (p.budgetTotal || 1), 0) / weightSum)
+        ? Math.round(computedRows.reduce((sum, p) => sum + p.progressPct * (p.budgetTotal || 1), 0) / weightSum)
         : 0;
-    return { pct, count: filtered.length };
-  }, [filtered]);
+    return { pct, count: computedRows.length };
+  }, [computedRows]);
 
   const [draft, setDraft] = useState<{
     code: string;
@@ -122,37 +75,24 @@ export function ProjectsPage() {
 
   const addProject = () => {
     if (!canCreate) return;
-    const now = new Date().toISOString().slice(0, 10);
-    const budgetTotal = Number(draft.budgetTotal) || 0;
-
-    const project: Project = {
-      id: createId(),
-      code: draft.code.trim(),
-      name: draft.name.trim(),
-      owner: draft.owner.trim(),
+    const budgetPlanTotal = Number(draft.budgetTotal) || 0;
+    actions.createProject({
+      code: draft.code,
+      name: draft.name,
+      owner: draft.owner,
       startDate: draft.startDate,
       endDate: draft.endDate || "",
-      status: "PLANNING",
-      progressPct: 0,
-      budgetTotal,
-      budgetUsed: 0,
-      updatedAt: now,
-    };
-
-    setProjects((prev) => [project, ...prev]);
+      budgetPlanTotal,
+    });
     setDraft((prev) => ({ ...prev, code: "", name: "", owner: "", budgetTotal: "0" }));
   };
 
   const updateProjectProgress = (id: string, progressPct: number) => {
-    const now = new Date().toISOString().slice(0, 10);
-    setProjects((prev) =>
-      prev.map((p) => (p.id === id ? { ...p, progressPct: clampPct(progressPct), updatedAt: now } : p)),
-    );
+    actions.updateProject(id, { progressPct: clampPct(progressPct) });
   };
 
   const updateProjectStatus = (id: string, status: ProjectStatus) => {
-    const now = new Date().toISOString().slice(0, 10);
-    setProjects((prev) => prev.map((p) => (p.id === id ? { ...p, status, updatedAt: now } : p)));
+    actions.updateProject(id, { status });
   };
 
   return (
@@ -256,7 +196,7 @@ export function ProjectsPage() {
             <div style={{ textAlign: "right" }}>Budget</div>
             <div style={{ textAlign: "right" }}>Update</div>
           </div>
-          {filtered.map((p) => {
+          {computedRows.map((p) => {
             const usedPct = p.budgetTotal > 0 ? Math.round((p.budgetUsed / p.budgetTotal) * 100) : 0;
             return (
               <div key={p.id} className="tableRow" style={{ gridTemplateColumns: "1.6fr 0.8fr 0.8fr 1fr 0.8fr" }}>
@@ -315,4 +255,3 @@ export function ProjectsPage() {
     </div>
   );
 }
-

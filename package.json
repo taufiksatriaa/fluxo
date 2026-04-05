@@ -1,0 +1,16 @@
+{
+  "name": "fluxo",
+  "version": "0.0.1",
+  "private": true,
+  "scripts": {
+    "dev": "npm run dev -w client",
+    "dev:server": "npm run dev -w server",
+    "dev:client": "npm run dev -w client",
+    "start": "npm run start -w server",
+    "build": "npm run build -w client"
+  },
+  "workspaces": [
+    "server",
+    "client"
+  ]
+}

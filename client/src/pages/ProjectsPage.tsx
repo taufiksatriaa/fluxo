@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import { calcRabGrandTotal, useAppStore } from "../store/appStore";
 import type { ProjectStatus } from "../store/appStore";
+import { Link } from "react-router-dom";
 
 function formatIdr(value: number) {
   return value.toLocaleString("id-ID");
@@ -202,7 +203,7 @@ export function ProjectsPage() {
               <div key={p.id} className="tableRow" style={{ gridTemplateColumns: "1.6fr 0.8fr 0.8fr 1fr 0.8fr" }}>
                 <div>
                   <div style={{ fontWeight: 700 }}>
-                    {p.code} — {p.name}
+                    <Link to={`/projects/${p.id}`}>{p.code} — {p.name}</Link>
                   </div>
                   <div className="muted" style={{ fontSize: 12, marginTop: 2 }}>
                     Owner: {p.owner} • {p.startDate}

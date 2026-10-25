@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { Link, Navigate, useParams } from "react-router-dom";
 import { calcRabGrandTotal, groupLabel, useAppStore } from "../store/appStore";
 import type { Transaction } from "../store/appStore";
@@ -8,7 +8,7 @@ function formatIdr(value: number) {
 }
 
 function formatFileSize(size: number) {
-  if (!Number.isFinite(size) || size < 0) return "—";
+  if (!Number.isFinite(size) || size < 0) return "-";
   const kb = size / 1024;
   if (kb < 1024) return `${kb.toFixed(1)} KB`;
   const mb = kb / 1024;
@@ -26,10 +26,13 @@ export function ProjectDetailPage() {
 
   const project = useMemo(() => state.projects.find((p) => p.id === projectId) ?? null, [projectId, state.projects]);
 
-  const categoryLabel = (categoryId: string) => {
-    const c = state.categories.find((x) => x.id === categoryId);
-    return c ? c.name : categoryId;
-  };
+  const categoryLabel = useCallback(
+    (categoryId: string) => {
+      const c = state.categories.find((x) => x.id === categoryId);
+      return c ? c.name : categoryId;
+    },
+    [state.categories],
+  );
 
   const rabInfoLabel = (t: Transaction) => {
     if (!t.rabRef) return null;
@@ -58,7 +61,7 @@ export function ProjectDetailPage() {
       if (!q) return true;
       return t.description.toLowerCase().includes(q) || categoryLabel(t.categoryId).toLowerCase().includes(q);
     });
-  }, [transactions, txTypeFilter, txSearch]);
+  }, [transactions, txTypeFilter, txSearch, categoryLabel]);
 
   const activeReceiptTx: Transaction | null = useMemo(() => {
     if (!activeReceiptTxId) return null;
@@ -136,8 +139,8 @@ export function ProjectDetailPage() {
       </div>
 
       {/* Primary KPI Cards */}
-      <div className="grid" style={{ marginTop: 16 }}>
-        <div className="card" style={{ gridColumn: "span 3" }}>
+      <div className="grid grid-kpi" style={{ marginTop: 16 }}>
+        <div className="card">
           <div className="label">Pagu Total Anggaran</div>
           <div className="stat-value">Rp {formatIdr(budgetTotal)}</div>
           <div className="muted" style={{ fontSize: 12, marginTop: 4 }}>
@@ -145,7 +148,7 @@ export function ProjectDetailPage() {
           </div>
         </div>
 
-        <div className="card" style={{ gridColumn: "span 3" }}>
+        <div className="card">
           <div className="label">Realisasi Kas Keluar</div>
           <div className="stat-value" style={{ color: "var(--primary)" }}>
             Rp {formatIdr(budgetUsed)}
@@ -155,7 +158,7 @@ export function ProjectDetailPage() {
           </div>
         </div>
 
-        <div className="card" style={{ gridColumn: "span 3" }}>
+        <div className="card">
           <div className="label">Sisa Anggaran Proyek</div>
           <div
             className="stat-value"
@@ -168,7 +171,7 @@ export function ProjectDetailPage() {
           </div>
         </div>
 
-        <div className="card" style={{ gridColumn: "span 3" }}>
+        <div className="card">
           <div className="label">Progress Pelaksanaan Fisik</div>
           <div className="stat-value" style={{ color: "var(--primary)" }}>
             {project.progressPct}%
@@ -182,8 +185,8 @@ export function ProjectDetailPage() {
       {/* Cashflow Breakdown per Group */}
       <div className="card" style={{ marginTop: 14 }}>
         <div className="label">Distribusi Pengeluaran Disetujui (OUT)</div>
-        <div className="grid" style={{ marginTop: 8 }}>
-          <div className="card" style={{ gridColumn: "span 3", background: "#f8fafc" }}>
+        <div className="grid grid-kpi" style={{ marginTop: 8 }}>
+          <div className="card" style={{ background: "#f8fafc" }}>
             <div className="label">Material</div>
             <div style={{ fontWeight: 700, fontSize: 16, marginTop: 2 }}>
               Rp {formatIdr(summary.outByGroup["MATERIAL"] ?? 0)}
@@ -266,11 +269,12 @@ export function ProjectDetailPage() {
             </select>
           </div>
 
-          <div className="table">
-            <div
-              className="tableRow tableHeader"
-              style={{ gridTemplateColumns: "1fr 2fr 0.8fr 1fr 1fr 0.8fr" }}
-            >
+          <div className="table-responsive">
+            <div className="table" style={{ marginTop: 0 }}>
+              <div
+                className="tableRow tableHeader"
+                style={{ gridTemplateColumns: "1fr 2fr 0.8fr 1fr 1fr 0.8fr" }}
+              >
               <div>Tanggal</div>
               <div>Detail & Item RAB</div>
               <div style={{ textAlign: "right" }}>Tipe</div>
@@ -348,6 +352,7 @@ export function ProjectDetailPage() {
                 <div>Tidak ada transaksi yang cocok untuk filter ini.</div>
               </div>
             )}
+            </div>
           </div>
         </div>
       )}
@@ -367,28 +372,30 @@ export function ProjectDetailPage() {
                 </Link>
               </div>
 
-              <div className="table">
-                <div className="tableRow tableHeader" style={{ gridTemplateColumns: "0.5fr 2fr 1fr 1fr" }}>
-                  <div>Section</div>
-                  <div>Judul Pekerjaan</div>
-                  <div style={{ textAlign: "right" }}>Jumlah Item</div>
-                  <div style={{ textAlign: "right" }}>Subtotal Rencana</div>
+              <div className="table-responsive">
+                <div className="table" style={{ marginTop: 0 }}>
+                  <div className="tableRow tableHeader" style={{ gridTemplateColumns: "0.5fr 2fr 1fr 1fr" }}>
+                    <div>Section</div>
+                    <div>Judul Pekerjaan</div>
+                    <div style={{ textAlign: "right" }}>Jumlah Item</div>
+                    <div style={{ textAlign: "right" }}>Subtotal Rencana</div>
+                  </div>
+                  {rabDoc.sections.map((sec) => {
+                    const secTotal = sec.items.reduce((sum, it) => {
+                      const q = Number(it.qty.replace(/\./g, "").replace(/,/g, ".")) || 0;
+                      const p = Number(it.unitPrice.replace(/\./g, "").replace(/,/g, ".")) || 0;
+                      return sum + q * p;
+                    }, 0);
+                    return (
+                      <div key={sec.id} className="tableRow" style={{ gridTemplateColumns: "0.5fr 2fr 1fr 1fr" }}>
+                        <div style={{ fontWeight: 700 }}>{sec.code}</div>
+                        <div style={{ fontWeight: 600 }}>{sec.title}</div>
+                        <div style={{ textAlign: "right" }}>{sec.items.length} item</div>
+                        <div style={{ textAlign: "right", fontWeight: 700 }}>Rp {formatIdr(secTotal)}</div>
+                      </div>
+                    );
+                  })}
                 </div>
-                {rabDoc.sections.map((sec) => {
-                  const secTotal = sec.items.reduce((sum, it) => {
-                    const q = Number(it.qty.replace(/\./g, "").replace(/,/g, ".")) || 0;
-                    const p = Number(it.unitPrice.replace(/\./g, "").replace(/,/g, ".")) || 0;
-                    return sum + q * p;
-                  }, 0);
-                  return (
-                    <div key={sec.id} className="tableRow" style={{ gridTemplateColumns: "0.5fr 2fr 1fr 1fr" }}>
-                      <div style={{ fontWeight: 700 }}>{sec.code}</div>
-                      <div style={{ fontWeight: 600 }}>{sec.title}</div>
-                      <div style={{ textAlign: "right" }}>{sec.items.length} item</div>
-                      <div style={{ textAlign: "right", fontWeight: 700 }}>Rp {formatIdr(secTotal)}</div>
-                    </div>
-                  );
-                })}
               </div>
             </div>
           ) : (
@@ -415,36 +422,38 @@ export function ProjectDetailPage() {
             <Link className="btn" to="/sdm">Buka Modul SDM ↗</Link>
           </div>
 
-          <div className="table">
-            <div className="tableRow tableHeader" style={{ gridTemplateColumns: "1fr 1.6fr 0.8fr 1fr 1.2fr" }}>
-              <div>Tanggal</div>
-              <div>Tenaga Kerja / Peran</div>
-              <div style={{ textAlign: "right" }}>Hari Kerja</div>
-              <div style={{ textAlign: "right" }}>Total Upah</div>
-              <div>Catatan</div>
-            </div>
-            {projectWages.map((w) => {
-              const emp = state.employees.find((e) => e.id === w.employeeId);
-              return (
-                <div key={w.id} className="tableRow" style={{ gridTemplateColumns: "1fr 1.6fr 0.8fr 1fr 1.2fr" }}>
-                  <div>{w.occurredAt}</div>
-                  <div>
-                    <div style={{ fontWeight: 600 }}>{emp?.name ?? w.employeeId}</div>
-                    <div className="muted" style={{ fontSize: 12 }}>{emp?.roleTitle} • Rp {formatIdr(w.dailyRate)}/hari</div>
-                  </div>
-                  <div style={{ textAlign: "right", fontWeight: 600 }}>{w.days} hari</div>
-                  <div style={{ textAlign: "right", fontWeight: 700, color: "var(--primary)" }}>
-                    Rp {formatIdr(w.amount)}
-                  </div>
-                  <div className="muted" style={{ fontSize: 12 }}>{w.note || "—"}</div>
-                </div>
-              );
-            })}
-            {projectWages.length === 0 && (
-              <div className="empty-state">
-                <div>Belum ada pembayaran upah tenaga kerja tercatat pada proyek ini.</div>
+          <div className="table-responsive">
+            <div className="table" style={{ marginTop: 0 }}>
+              <div className="tableRow tableHeader" style={{ gridTemplateColumns: "1fr 1.6fr 0.8fr 1fr 1.2fr" }}>
+                <div>Tanggal</div>
+                <div>Tenaga Kerja / Peran</div>
+                <div style={{ textAlign: "right" }}>Hari Kerja</div>
+                <div style={{ textAlign: "right" }}>Total Upah</div>
+                <div>Catatan</div>
               </div>
-            )}
+              {projectWages.map((w) => {
+                const emp = state.employees.find((e) => e.id === w.employeeId);
+                return (
+                  <div key={w.id} className="tableRow" style={{ gridTemplateColumns: "1fr 1.6fr 0.8fr 1fr 1.2fr" }}>
+                    <div>{w.occurredAt}</div>
+                    <div>
+                      <div style={{ fontWeight: 600 }}>{emp?.name ?? w.employeeId}</div>
+                      <div className="muted" style={{ fontSize: 12 }}>{emp?.roleTitle} • Rp {formatIdr(w.dailyRate)}/hari</div>
+                    </div>
+                    <div style={{ textAlign: "right", fontWeight: 600 }}>{w.days} hari</div>
+                    <div style={{ textAlign: "right", fontWeight: 700, color: "var(--primary)" }}>
+                      Rp {formatIdr(w.amount)}
+                    </div>
+                    <div className="muted" style={{ fontSize: 12 }}>{w.note || "—"}</div>
+                  </div>
+                );
+              })}
+              {projectWages.length === 0 && (
+                <div className="empty-state">
+                  <div>Belum ada pembayaran upah tenaga kerja tercatat pada proyek ini.</div>
+                </div>
+              )}
+            </div>
           </div>
         </div>
       )}
@@ -462,35 +471,37 @@ export function ProjectDetailPage() {
             <Link className="btn" to="/equipment">Kelola Semua Peralatan ↗</Link>
           </div>
 
-          <div className="table">
-            <div className="tableRow tableHeader" style={{ gridTemplateColumns: "1fr 2fr 1fr 1.2fr 1fr" }}>
-              <div>Kode Alat</div>
-              <div>Nama Alat & Kategori</div>
-              <div>Kondisi</div>
-              <div>PIC Penanggung Jawab</div>
-              <div>Tanggal Penugasan</div>
+          <div className="table-responsive">
+            <div className="table" style={{ marginTop: 0 }}>
+              <div className="tableRow tableHeader" style={{ gridTemplateColumns: "1fr 2fr 1fr 1.2fr 1fr" }}>
+                <div>Kode Alat</div>
+                <div>Nama Alat & Kategori</div>
+                <div>Kondisi</div>
+                <div>PIC Penanggung Jawab</div>
+                <div>Tanggal Penugasan</div>
+              </div>
+              {projectEquipments.map((eq) => (
+                <div key={eq.id} className="tableRow" style={{ gridTemplateColumns: "1fr 2fr 1fr 1.2fr 1fr" }}>
+                  <div style={{ fontWeight: 600 }}>{eq.code}</div>
+                  <div>
+                    <div style={{ fontWeight: 600 }}>{eq.name}</div>
+                    <div className="muted" style={{ fontSize: 12 }}>{eq.category}</div>
+                  </div>
+                  <div>
+                    <span className={eq.condition === "BAIK" ? "badge badge-success" : "badge badge-warning"}>
+                      {eq.condition}
+                    </span>
+                  </div>
+                  <div style={{ fontWeight: 500 }}>{eq.assignedTo || "—"}</div>
+                  <div className="muted">{eq.assignedDate || "—"}</div>
+                </div>
+              ))}
+              {projectEquipments.length === 0 && (
+                <div className="empty-state">
+                  <div>Tidak ada peralatan kerja yang sedang ditugaskan di lokasi proyek ini.</div>
+                </div>
+              )}
             </div>
-            {projectEquipments.map((eq) => (
-              <div key={eq.id} className="tableRow" style={{ gridTemplateColumns: "1fr 2fr 1fr 1.2fr 1fr" }}>
-                <div style={{ fontWeight: 600 }}>{eq.code}</div>
-                <div>
-                  <div style={{ fontWeight: 600 }}>{eq.name}</div>
-                  <div className="muted" style={{ fontSize: 12 }}>{eq.category}</div>
-                </div>
-                <div>
-                  <span className={eq.condition === "BAIK" ? "badge badge-success" : "badge badge-warning"}>
-                    {eq.condition}
-                  </span>
-                </div>
-                <div style={{ fontWeight: 500 }}>{eq.assignedTo || "—"}</div>
-                <div className="muted">{eq.assignedDate || "—"}</div>
-              </div>
-            ))}
-            {projectEquipments.length === 0 && (
-              <div className="empty-state">
-                <div>Tidak ada peralatan kerja yang sedang ditugaskan di lokasi proyek ini.</div>
-              </div>
-            )}
           </div>
         </div>
       )}
@@ -499,6 +510,7 @@ export function ProjectDetailPage() {
       {activeReceiptTx ? (
         <div className="modal-backdrop" onClick={() => setActiveReceiptTxId(null)}>
           <div className="modal-card" style={{ maxWidth: 700 }} onClick={(e) => e.stopPropagation()}>
+            <div className="modal-drag-handle mobile-only" />
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
               <div>
                 <div className="label">Bukti Transaksi</div>

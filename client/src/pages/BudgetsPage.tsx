@@ -612,7 +612,7 @@ export function BudgetsPage() {
       </div>
 
       {/* KPI Cards Serapan */}
-      <div className="grid" style={{ marginTop: 14 }}>
+      <div className="grid grid-kpi" style={{ marginTop: 14 }}>
         <div className="card" style={{ gridColumn: "span 3" }}>
           <div className="label">Pagu Total RAB</div>
           <div className="stat-value">Rp {formatIdr(grandTotal)}</div>
@@ -661,18 +661,18 @@ export function BudgetsPage() {
 
       {/* Info Card */}
       <div className="card" style={{ marginTop: 14 }}>
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(12, 1fr)", gap: 12 }}>
-          <div style={{ gridColumn: "span 4" }}>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: 12 }}>
+          <div>
             <div className="label">Pilih Proyek</div>
             <select className="input" value={projectId} onChange={(e) => setProjectId(e.target.value)}>
               {projects.map((p) => (
                 <option key={p.id} value={p.id}>
-                  {p.code} — {p.name}
+                  {p.code}: {p.name}
                 </option>
               ))}
             </select>
           </div>
-          <div style={{ gridColumn: "span 8" }}>
+          <div>
             <div className="label">Judul Dokumen RAB</div>
             <input
               className="input"
@@ -710,11 +710,12 @@ export function BudgetsPage() {
 
         {/* ==================== MODE 1: EDIT PLAN ==================== */}
         {viewMode === "PLAN" && (
-          <div className="table">
-            <div
-              className="tableRow tableHeader"
-              style={{ gridTemplateColumns: "0.35fr 1.3fr 1.2fr 0.55fr 0.5fr 0.8fr 0.85fr 0.45fr" }}
-            >
+          <div className="table-responsive">
+            <div className="table" style={{ marginTop: 0 }}>
+              <div
+                className="tableRow tableHeader"
+                style={{ gridTemplateColumns: "0.35fr 1.3fr 1.2fr 0.55fr 0.5fr 0.8fr 0.85fr 0.45fr" }}
+              >
               <div>No</div>
               <div>Description</div>
               <div>Spesifikasi</div>
@@ -872,107 +873,110 @@ export function BudgetsPage() {
                 )}
               </div>
             )}
+            </div>
           </div>
         )}
 
         {/* ==================== MODE 2: TRACKING REALISASI ==================== */}
         {viewMode === "REALISASI" && (
-          <div className="table">
-            <div
-              className="tableRow tableHeader"
-              style={{ gridTemplateColumns: "0.35fr 2fr 1.1fr 1.1fr 1.1fr 1fr" }}
-            >
-              <div>No</div>
-              <div>Item Pekerjaan & Spesifikasi</div>
-              <div style={{ textAlign: "right" }}>Pagu Rencana (Plan)</div>
-              <div style={{ textAlign: "right" }}>Realisasi Kas Keluar</div>
-              <div style={{ textAlign: "right" }}>Sisa Pagu Anggaran</div>
-              <div style={{ textAlign: "right" }}>Status Serapan</div>
-            </div>
+          <div className="table-responsive">
+            <div className="table" style={{ marginTop: 0 }}>
+              <div
+                className="tableRow tableHeader"
+                style={{ gridTemplateColumns: "0.35fr 2fr 1.1fr 1.1fr 1.1fr 1fr" }}
+              >
+                <div>No</div>
+                <div>Item Pekerjaan & Spesifikasi</div>
+                <div style={{ textAlign: "right" }}>Pagu Rencana (Plan)</div>
+                <div style={{ textAlign: "right" }}>Realisasi Kas Keluar</div>
+                <div style={{ textAlign: "right" }}>Sisa Pagu Anggaran</div>
+                <div style={{ textAlign: "right" }}>Status Serapan</div>
+              </div>
 
-            {sections.map((section) => {
-              const sectionCalc = sectionTotals.find((s) => s.sectionId === section.id);
-              const subtotal = sectionCalc?.subtotal ?? 0;
-              const subtotalUsed = sectionCalc?.subtotalUsed ?? 0;
-              const subtotalRem = subtotal - subtotalUsed;
+              {sections.map((section) => {
+                const sectionCalc = sectionTotals.find((s) => s.sectionId === section.id);
+                const subtotal = sectionCalc?.subtotal ?? 0;
+                const subtotalUsed = sectionCalc?.subtotalUsed ?? 0;
+                const subtotalRem = subtotal - subtotalUsed;
 
-              return (
-                <div key={section.id}>
-                  <div
-                    className="tableRow"
-                    style={{
-                      gridTemplateColumns: "0.35fr 2fr 1.1fr 1.1fr 1.1fr 1fr",
-                      background: "#f1f5f9",
-                    }}
-                  >
-                    <div style={{ fontWeight: 800 }}>{section.code}</div>
-                    <div style={{ fontWeight: 700 }}>{section.title}</div>
-                    <div style={{ textAlign: "right", fontWeight: 700 }}>Rp {formatIdr(subtotal)}</div>
-                    <div style={{ textAlign: "right", fontWeight: 700, color: "var(--primary)" }}>
-                      Rp {formatIdr(subtotalUsed)}
+                return (
+                  <div key={section.id}>
+                    <div
+                      className="tableRow"
+                      style={{
+                        gridTemplateColumns: "0.35fr 2fr 1.1fr 1.1fr 1.1fr 1fr",
+                        background: "#f1f5f9",
+                      }}
+                    >
+                      <div style={{ fontWeight: 800 }}>{section.code}</div>
+                      <div style={{ fontWeight: 700 }}>{section.title}</div>
+                      <div style={{ textAlign: "right", fontWeight: 700 }}>Rp {formatIdr(subtotal)}</div>
+                      <div style={{ textAlign: "right", fontWeight: 700, color: "var(--primary)" }}>
+                        Rp {formatIdr(subtotalUsed)}
+                      </div>
+                      <div style={{ textAlign: "right", fontWeight: 700, color: subtotalRem < 0 ? "var(--danger)" : "var(--success)" }}>
+                        Rp {formatIdr(subtotalRem)}
+                      </div>
+                      <div style={{ textAlign: "right" }}>
+                        <span className="badge badge-neutral">Subtotal {section.code}</span>
+                      </div>
                     </div>
-                    <div style={{ textAlign: "right", fontWeight: 700, color: subtotalRem < 0 ? "var(--danger)" : "var(--success)" }}>
-                      Rp {formatIdr(subtotalRem)}
-                    </div>
-                    <div style={{ textAlign: "right" }}>
-                      <span className="badge badge-neutral">Subtotal {section.code}</span>
-                    </div>
-                  </div>
 
-                  {section.items.map((item) => {
-                    const calc = sectionCalc?.items.find((x) => x.id === item.id);
-                    const qty = calc?.qty ?? parseQty(item.qty);
-                    const unitPrice = calc?.unitPrice ?? parseIdMoney(item.unitPrice);
-                    const total = calc?.total ?? qty * unitPrice;
-                    const used = calc?.used ?? 0;
-                    const rem = total - used;
-                    const isOver = used > total && total > 0;
-                    const pct = total > 0 ? Math.round((used / total) * 100) : 0;
+                    {section.items.map((item) => {
+                      const calc = sectionCalc?.items.find((x) => x.id === item.id);
+                      const qty = calc?.qty ?? parseQty(item.qty);
+                      const unitPrice = calc?.unitPrice ?? parseIdMoney(item.unitPrice);
+                      const total = calc?.total ?? qty * unitPrice;
+                      const used = calc?.used ?? 0;
+                      const rem = total - used;
+                      const isOver = used > total && total > 0;
+                      const pct = total > 0 ? Math.round((used / total) * 100) : 0;
 
-                    return (
-                      <div
-                        key={item.id}
-                        className="tableRow"
-                        style={{
-                          gridTemplateColumns: "0.35fr 2fr 1.1fr 1.1fr 1.1fr 1fr",
-                          background: isOver ? "rgba(220, 38, 38, 0.03)" : undefined,
-                        }}
-                      >
-                        <div style={{ fontWeight: 600 }}>{item.no}</div>
-                        <div>
-                          <div style={{ fontWeight: 600 }}>{item.title}</div>
-                          <div className="muted" style={{ fontSize: 12 }}>
-                            {item.spec} • {formatQty(qty)} {item.unit} @ Rp {formatIdr(unitPrice)}
+                      return (
+                        <div
+                          key={item.id}
+                          className="tableRow"
+                          style={{
+                            gridTemplateColumns: "0.35fr 2fr 1.1fr 1.1fr 1.1fr 1fr",
+                            background: isOver ? "rgba(220, 38, 38, 0.03)" : undefined,
+                          }}
+                        >
+                          <div style={{ fontWeight: 600 }}>{item.no}</div>
+                          <div>
+                            <div style={{ fontWeight: 600 }}>{item.title}</div>
+                            <div className="muted" style={{ fontSize: 12 }}>
+                              {item.spec} • {formatQty(qty)} {item.unit} @ Rp {formatIdr(unitPrice)}
+                            </div>
+                          </div>
+                          <div style={{ textAlign: "right", fontWeight: 600 }}>Rp {formatIdr(total)}</div>
+                          <div style={{ textAlign: "right", fontWeight: 700, color: "var(--primary)" }}>
+                            Rp {formatIdr(used)}
+                          </div>
+                          <div style={{ textAlign: "right", fontWeight: 700, color: rem < 0 ? "var(--danger)" : "var(--success)" }}>
+                            Rp {formatIdr(rem)}
+                          </div>
+                          <div style={{ textAlign: "right" }}>
+                            {used === 0 ? (
+                              <span className="badge badge-neutral">Belum Ada</span>
+                            ) : isOver ? (
+                              <span className="badge badge-danger">Over ({pct}%)</span>
+                            ) : (
+                              <span className="badge badge-success">Aman ({pct}%)</span>
+                            )}
                           </div>
                         </div>
-                        <div style={{ textAlign: "right", fontWeight: 600 }}>Rp {formatIdr(total)}</div>
-                        <div style={{ textAlign: "right", fontWeight: 700, color: "var(--primary)" }}>
-                          Rp {formatIdr(used)}
-                        </div>
-                        <div style={{ textAlign: "right", fontWeight: 700, color: rem < 0 ? "var(--danger)" : "var(--success)" }}>
-                          Rp {formatIdr(rem)}
-                        </div>
-                        <div style={{ textAlign: "right" }}>
-                          {used === 0 ? (
-                            <span className="badge badge-neutral">Belum Ada</span>
-                          ) : isOver ? (
-                            <span className="badge badge-danger">Over ({pct}%)</span>
-                          ) : (
-                            <span className="badge badge-success">Aman ({pct}%)</span>
-                          )}
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              );
-            })}
+                      );
+                    })}
+                  </div>
+                );
+              })}
 
-            {sections.length === 0 && (
-              <div className="empty-state">
-                <div>Belum ada data section RAB untuk dievaluasi.</div>
-              </div>
-            )}
+              {sections.length === 0 && (
+                <div className="empty-state">
+                  <div>Belum ada data section RAB untuk dievaluasi.</div>
+                </div>
+              )}
+            </div>
           </div>
         )}
       </div>

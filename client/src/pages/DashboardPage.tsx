@@ -70,8 +70,8 @@ export function DashboardPage() {
       </div>
 
       {/* KPI Cards Grid */}
-      <div className="grid">
-        <div className="card" style={{ gridColumn: "span 3" }}>
+      <div className="grid grid-kpi">
+        <div className="card">
           <div className="label">Kas Masuk (IN)</div>
           <div className="stat-value" style={{ color: "#16a34a" }}>
             Rp {formatIdr(stats.totalIn)}
@@ -81,7 +81,7 @@ export function DashboardPage() {
           </div>
         </div>
 
-        <div className="card" style={{ gridColumn: "span 3" }}>
+        <div className="card">
           <div className="label">Kas Keluar (OUT)</div>
           <div className="stat-value" style={{ color: "var(--primary)" }}>
             Rp {formatIdr(stats.totalOut)}
@@ -91,7 +91,7 @@ export function DashboardPage() {
           </div>
         </div>
 
-        <div className="card" style={{ gridColumn: "span 3" }}>
+        <div className="card">
           <div className="label">Net Cashflow</div>
           <div
             className="stat-value"
@@ -104,7 +104,7 @@ export function DashboardPage() {
           </div>
         </div>
 
-        <div className="card" style={{ gridColumn: "span 3" }}>
+        <div className="card">
           <div className="label">Antrean Persetujuan</div>
           <div className="stat-value" style={{ color: stats.pendingApprovals > 0 ? "var(--warning)" : "var(--muted)" }}>
             {stats.pendingApprovals} Transaksi
@@ -195,54 +195,56 @@ export function DashboardPage() {
           <div className="progressFill" style={{ width: `${stats.overallProgress}%` }} />
         </div>
 
-        <div className="table" style={{ marginTop: 16 }}>
-          <div className="tableRow tableHeader" style={{ gridTemplateColumns: "2fr 1fr 1fr 0.8fr 0.8fr" }}>
-            <div>Kode & Nama Proyek</div>
-            <div style={{ textAlign: "right" }}>Progress Fisik</div>
-            <div style={{ textAlign: "right" }}>Pagu Anggaran (RAB)</div>
-            <div style={{ textAlign: "right" }}>Kas Keluar</div>
-            <div style={{ textAlign: "right" }}>Aksi Detail</div>
-          </div>
-          {stats.projectRows.map((p) => {
-            const usedPct = p.budgetTotal > 0 ? Math.round((p.budgetUsed / p.budgetTotal) * 100) : 0;
-            const isOver = p.budgetUsed > p.budgetTotal && p.budgetTotal > 0;
-            return (
-              <div key={p.id} className="tableRow" style={{ gridTemplateColumns: "2fr 1fr 1fr 0.8fr 0.8fr" }}>
-                <div>
-                  <div style={{ fontWeight: 600 }}>
-                    <Link to={`/projects/${p.id}`} style={{ color: "var(--primary)" }}>
-                      {p.code} — {p.name}
+        <div className="table-responsive">
+          <div className="table" style={{ marginTop: 0 }}>
+            <div className="tableRow tableHeader" style={{ gridTemplateColumns: "2fr 1fr 1fr 0.8fr 0.8fr" }}>
+              <div>Kode & Nama Proyek</div>
+              <div style={{ textAlign: "right" }}>Progress Fisik</div>
+              <div style={{ textAlign: "right" }}>Pagu Anggaran (RAB)</div>
+              <div style={{ textAlign: "right" }}>Kas Keluar</div>
+              <div style={{ textAlign: "right" }}>Aksi Detail</div>
+            </div>
+            {stats.projectRows.map((p) => {
+              const usedPct = p.budgetTotal > 0 ? Math.round((p.budgetUsed / p.budgetTotal) * 100) : 0;
+              const isOver = p.budgetUsed > p.budgetTotal && p.budgetTotal > 0;
+              return (
+                <div key={p.id} className="tableRow" style={{ gridTemplateColumns: "2fr 1fr 1fr 0.8fr 0.8fr" }}>
+                  <div>
+                    <div style={{ fontWeight: 600 }}>
+                      <Link to={`/projects/${p.id}`} style={{ color: "var(--primary)" }}>
+                        {p.code} — {p.name}
+                      </Link>
+                    </div>
+                    <div className="muted" style={{ fontSize: 12, marginTop: 2 }}>
+                      Update terakhir: {p.updatedAt}
+                    </div>
+                  </div>
+                  <div style={{ textAlign: "right" }}>
+                    <div style={{ fontWeight: 700 }}>{p.progressPct}%</div>
+                    <div className="progress" style={{ marginTop: 6 }}>
+                      <div className="progressFill" style={{ width: `${p.progressPct}%` }} />
+                    </div>
+                  </div>
+                  <div style={{ textAlign: "right", fontWeight: 600 }}>
+                    Rp {formatIdr(p.budgetTotal)}
+                  </div>
+                  <div style={{ textAlign: "right" }}>
+                    <div style={{ fontWeight: 600, color: isOver ? "var(--danger)" : "var(--text)" }}>
+                      Rp {formatIdr(p.budgetUsed)}
+                    </div>
+                    <div className="muted" style={{ fontSize: 11 }}>
+                      {usedPct}% pagu
+                    </div>
+                  </div>
+                  <div style={{ textAlign: "right" }}>
+                    <Link to={`/projects/${p.id}`} className="btn" style={{ padding: "4px 10px", fontSize: 12 }}>
+                      Detail →
                     </Link>
                   </div>
-                  <div className="muted" style={{ fontSize: 12, marginTop: 2 }}>
-                    Update terakhir: {p.updatedAt}
-                  </div>
                 </div>
-                <div style={{ textAlign: "right" }}>
-                  <div style={{ fontWeight: 700 }}>{p.progressPct}%</div>
-                  <div className="progress" style={{ marginTop: 6 }}>
-                    <div className="progressFill" style={{ width: `${p.progressPct}%` }} />
-                  </div>
-                </div>
-                <div style={{ textAlign: "right", fontWeight: 600 }}>
-                  Rp {formatIdr(p.budgetTotal)}
-                </div>
-                <div style={{ textAlign: "right" }}>
-                  <div style={{ fontWeight: 600, color: isOver ? "var(--danger)" : "var(--text)" }}>
-                    Rp {formatIdr(p.budgetUsed)}
-                  </div>
-                  <div className="muted" style={{ fontSize: 11 }}>
-                    {usedPct}% pagu
-                  </div>
-                </div>
-                <div style={{ textAlign: "right" }}>
-                  <Link to={`/projects/${p.id}`} className="btn" style={{ padding: "4px 10px", fontSize: 12 }}>
-                    Detail →
-                  </Link>
-                </div>
-              </div>
-            );
-          })}
+              );
+            })}
+          </div>
         </div>
       </div>
     </div>

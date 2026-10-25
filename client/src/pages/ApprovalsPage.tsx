@@ -88,11 +88,12 @@ export function ApprovalsPage() {
       </div>
 
       <div className="card" style={{ marginTop: 14 }}>
-        <div className="table">
-          <div
-            className="tableRow tableHeader"
-            style={{ gridTemplateColumns: "1fr 1.8fr 1fr 0.8fr 1.2fr" }}
-          >
+        <div className="table-responsive">
+          <div className="table" style={{ marginTop: 0 }}>
+            <div
+              className="tableRow tableHeader"
+              style={{ gridTemplateColumns: "1fr 1.8fr 1fr 0.8fr 1.2fr" }}
+            >
             <div>Tanggal</div>
             <div>Proyek / Rincian Pengeluaran</div>
             <div style={{ textAlign: "right" }}>Nominal Diajukan</div>
@@ -152,6 +153,7 @@ export function ApprovalsPage() {
               <div>Tidak ada transaksi pending yang membutuhkan persetujuan saat ini.</div>
             </div>
           ) : null}
+          </div>
         </div>
       </div>
 

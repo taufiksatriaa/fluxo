@@ -119,7 +119,7 @@ export function ProjectsPage() {
 
       <div className="card" style={{ marginTop: 12 }}>
         <div className="label">Tambah Project (template)</div>
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(12, 1fr)", gap: 12, marginTop: 10 }}>
+        <div className="grid" style={{ marginTop: 10 }}>
           <div style={{ gridColumn: "span 2" }}>
             <div className="label">Kode</div>
             <input className="input" value={draft.code} onChange={(e) => setDraft((p) => ({ ...p, code: e.target.value }))} disabled={!canEdit} />
@@ -159,7 +159,7 @@ export function ProjectsPage() {
 
       <div className="card" style={{ marginTop: 12 }}>
         <div className="label">Filter</div>
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(12, 1fr)", gap: 12, marginTop: 10 }}>
+        <div className="grid" style={{ marginTop: 10 }}>
           <div style={{ gridColumn: "span 3" }}>
             <div className="label">Status</div>
             <select
@@ -194,8 +194,9 @@ export function ProjectsPage() {
           </div>
         </div>
 
-        <div className="table" style={{ marginTop: 10 }}>
-          <div className="tableRow tableHeader" style={{ gridTemplateColumns: "1.6fr 0.8fr 0.8fr 1fr 0.8fr" }}>
+        <div className="table-responsive">
+          <div className="table" style={{ marginTop: 0 }}>
+            <div className="tableRow tableHeader" style={{ gridTemplateColumns: "1.6fr 0.8fr 0.8fr 1fr 0.8fr" }}>
             <div>Project</div>
             <div>Status</div>
             <div style={{ textAlign: "right" }}>Progress</div>
@@ -257,6 +258,7 @@ export function ProjectsPage() {
               <div className="muted">Tidak ada project (sesuai filter)</div>
             </div>
           ) : null}
+          </div>
         </div>
       </div>
     </div>

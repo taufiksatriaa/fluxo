@@ -286,7 +286,7 @@ export function TransactionsPage() {
         </div>
       </div>
 
-      <div className="grid" style={{ marginTop: 12 }}>
+      <div className="grid grid-kpi" style={{ marginTop: 12 }}>
         <div className="card">
           <div className="label">Total IN</div>
           <div style={{ marginTop: 8, fontSize: 24 }}>{formatIdr(totals.in)}</div>
@@ -566,86 +566,88 @@ export function TransactionsPage() {
 
       <div className="card" style={{ marginTop: 12 }}>
         <div className="label">Daftar Transaksi (template)</div>
-        <div className="table" style={{ marginTop: 10 }}>
-          <div
-            className="tableRow tableHeader"
-            style={{ gridTemplateColumns: "1.2fr 1.7fr 0.8fr 0.9fr 0.8fr 0.7fr" }}
-          >
-            <div>Tanggal</div>
-            <div>Project / Kategori</div>
-            <div style={{ textAlign: "right" }}>Tipe</div>
-            <div style={{ textAlign: "right" }}>Nominal</div>
-            <div style={{ textAlign: "right" }}>Status</div>
-            <div style={{ textAlign: "right" }}>Bukti</div>
-          </div>
-          {groupedBySection.map((g) => (
-            <div key={g.key}>
-              <div className="tableRow" style={{ gridTemplateColumns: "1fr", background: "rgba(255,255,255,0.04)" }}>
-                <div style={{ fontWeight: 700 }}>{g.title}</div>
+        <div className="table-responsive">
+          <div className="table" style={{ marginTop: 0 }}>
+            <div
+              className="tableRow tableHeader"
+              style={{ gridTemplateColumns: "1.2fr 1.7fr 0.8fr 0.9fr 0.8fr 0.7fr" }}
+            >
+              <div>Tanggal</div>
+              <div>Project / Kategori</div>
+              <div style={{ textAlign: "right" }}>Tipe</div>
+              <div style={{ textAlign: "right" }}>Nominal</div>
+              <div style={{ textAlign: "right" }}>Status</div>
+              <div style={{ textAlign: "right" }}>Bukti</div>
+            </div>
+            {groupedBySection.map((g) => (
+              <div key={g.key}>
+                <div className="tableRow" style={{ gridTemplateColumns: "1fr", background: "rgba(255,255,255,0.04)" }}>
+                  <div style={{ fontWeight: 700 }}>{g.title}</div>
+                </div>
+                {g.items.map((t) => {
+                  const rabInfo = rabInfoLabel(t);
+                  return (
+                    <div
+                      key={t.id}
+                      className="tableRow"
+                      style={{ gridTemplateColumns: "1.2fr 1.7fr 0.8fr 0.9fr 0.8fr 0.7fr" }}
+                    >
+                      <div>
+                        <div style={{ fontWeight: 600 }}>{t.occurredAt}</div>
+                        <div className="muted" style={{ fontSize: 12 }}>
+                          {t.id}
+                        </div>
+                      </div>
+                      <div>
+                        <div style={{ fontWeight: 600 }}>{projectLabel(t.projectId)}</div>
+                        <div className="muted" style={{ fontSize: 12, marginTop: 2 }}>
+                          {groupLabel(t.group)} • {categoryLabel(t.categoryId)} — {t.description}
+                        </div>
+                        {rabInfo ? (
+                          <div className="muted" style={{ fontSize: 12, marginTop: 6 }}>
+                            <div>{rabInfo.sectionText}</div>
+                            <div>{rabInfo.itemText}</div>
+                          </div>
+                        ) : null}
+                      </div>
+                      <div style={{ textAlign: "right", fontWeight: 700 }}>{t.type}</div>
+                      <div style={{ textAlign: "right" }}>{formatIdr(t.amount)}</div>
+                      <div style={{ textAlign: "right" }}>
+                        {t.approvalStatus === "APPROVED" ? (
+                          <span className="badge badge-success">APPROVED</span>
+                        ) : t.approvalStatus === "PENDING" ? (
+                          <span className="badge badge-warning">PENDING</span>
+                        ) : (
+                          <div>
+                            <span className="badge badge-danger">REJECTED</span>
+                            {t.rejectionReason ? (
+                              <div className="danger" style={{ fontSize: 11, marginTop: 4, maxWidth: 140 }}>
+                                {t.rejectionReason}
+                              </div>
+                            ) : null}
+                          </div>
+                        )}
+                      </div>
+                      <div style={{ textAlign: "right" }}>
+                        {t.attachments.length > 0 ? (
+                          <button className="btn" type="button" onClick={() => setActiveReceiptTxId(t.id)}>
+                            Lihat ({t.attachments.length})
+                          </button>
+                        ) : (
+                          <span className="muted">—</span>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
-              {g.items.map((t) => {
-                const rabInfo = rabInfoLabel(t);
-                return (
-                  <div
-                    key={t.id}
-                    className="tableRow"
-                    style={{ gridTemplateColumns: "1.2fr 1.7fr 0.8fr 0.9fr 0.8fr 0.7fr" }}
-                  >
-                    <div>
-                      <div style={{ fontWeight: 600 }}>{t.occurredAt}</div>
-                      <div className="muted" style={{ fontSize: 12 }}>
-                        {t.id}
-                      </div>
-                    </div>
-                    <div>
-                      <div style={{ fontWeight: 600 }}>{projectLabel(t.projectId)}</div>
-                      <div className="muted" style={{ fontSize: 12, marginTop: 2 }}>
-                        {groupLabel(t.group)} • {categoryLabel(t.categoryId)} — {t.description}
-                      </div>
-                      {rabInfo ? (
-                        <div className="muted" style={{ fontSize: 12, marginTop: 6 }}>
-                          <div>{rabInfo.sectionText}</div>
-                          <div>{rabInfo.itemText}</div>
-                        </div>
-                      ) : null}
-                    </div>
-                    <div style={{ textAlign: "right", fontWeight: 700 }}>{t.type}</div>
-                    <div style={{ textAlign: "right" }}>{formatIdr(t.amount)}</div>
-                    <div style={{ textAlign: "right" }}>
-                      {t.approvalStatus === "APPROVED" ? (
-                        <span className="badge badge-success">APPROVED</span>
-                      ) : t.approvalStatus === "PENDING" ? (
-                        <span className="badge badge-warning">PENDING</span>
-                      ) : (
-                        <div>
-                          <span className="badge badge-danger">REJECTED</span>
-                          {t.rejectionReason ? (
-                            <div className="danger" style={{ fontSize: 11, marginTop: 4, maxWidth: 140 }}>
-                              {t.rejectionReason}
-                            </div>
-                          ) : null}
-                        </div>
-                      )}
-                    </div>
-                    <div style={{ textAlign: "right" }}>
-                      {t.attachments.length > 0 ? (
-                        <button className="btn" type="button" onClick={() => setActiveReceiptTxId(t.id)}>
-                          Lihat ({t.attachments.length})
-                        </button>
-                      ) : (
-                        <span className="muted">—</span>
-                      )}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          ))}
-          {filtered.length === 0 ? (
-            <div className="tableRow" style={{ gridTemplateColumns: "1fr" }}>
-              <div className="muted">Tidak ada transaksi (sesuai filter)</div>
-            </div>
-          ) : null}
+            ))}
+            {filtered.length === 0 ? (
+              <div className="tableRow" style={{ gridTemplateColumns: "1fr" }}>
+                <div className="muted">Tidak ada transaksi (sesuai filter)</div>
+              </div>
+            ) : null}
+          </div>
         </div>
       </div>
 

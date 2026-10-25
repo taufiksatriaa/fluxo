@@ -170,18 +170,18 @@ export function InventoryPage() {
       </div>
 
       {/* KPI Cards */}
-      <div className="grid" style={{ marginTop: 16 }}>
-        <div className="card" style={{ gridColumn: "span 3" }}>
+      <div className="grid grid-kpi" style={{ marginTop: 16 }}>
+        <div className="card">
           <div className="label">Total Item Material</div>
           <div className="stat-value">{metrics.totalItems} Varian</div>
           <div className="muted" style={{ fontSize: 12, marginTop: 4 }}>Tersedia di seluruh gudang</div>
         </div>
-        <div className="card" style={{ gridColumn: "span 3" }}>
+        <div className="card">
           <div className="label">Estimasi Nilai Stok</div>
           <div className="stat-value" style={{ color: "var(--primary)" }}>Rp {formatIdr(metrics.totalAssetValue)}</div>
           <div className="muted" style={{ fontSize: 12, marginTop: 4 }}>Total nilai aset material</div>
         </div>
-        <div className="card" style={{ gridColumn: "span 3" }}>
+        <div className="card">
           <div className="label">Stok Perlu Restock</div>
           <div className="stat-value" style={{ color: metrics.lowStockCount > 0 ? "var(--danger)" : "var(--success)" }}>
             {metrics.lowStockCount} Item
@@ -190,7 +190,7 @@ export function InventoryPage() {
             {metrics.lowStockCount > 0 ? "Stok di bawah batas minimum!" : "Semua stok di atas ambang aman"}
           </div>
         </div>
-        <div className="card" style={{ gridColumn: "span 3" }}>
+        <div className="card">
           <div className="label">Total Mutasi Masuk/Keluar</div>
           <div className="stat-value">{metrics.movementCount} Transaksi</div>
           <div className="muted" style={{ fontSize: 12, marginTop: 4 }}>Riwayat pergerakan fisik</div>
@@ -241,7 +241,8 @@ export function InventoryPage() {
           </div>
 
           {/* Items Table */}
-          <div className="table">
+          <div className="table-responsive">
+            <div className="table" style={{ marginTop: 0 }}>
             <div
               className="tableRow tableHeader"
               style={{ gridTemplateColumns: "1fr 2fr 1fr 1fr 1.2fr 1.2fr 1fr" }}
@@ -307,70 +308,73 @@ export function InventoryPage() {
                 <div>Tidak ada material yang sesuai filter.</div>
               </div>
             )}
+            </div>
           </div>
         </div>
       )}
 
       {/* TAB 2: LOGS */}
       {activeTab === "LOGS" && (
-        <div className="table">
-          <div
-            className="tableRow tableHeader"
-            style={{ gridTemplateColumns: "1fr 1.8fr 0.8fr 1fr 1.8fr" }}
-          >
-            <div>Tanggal</div>
-            <div>Barang</div>
-            <div>Jenis</div>
-            <div style={{ textAlign: "right" }}>Jumlah</div>
-            <div>Alokasi Proyek / Keterangan</div>
-          </div>
-
-          {state.inventoryMovements.map((mov) => {
-            const item = state.inventoryItems.find((i) => i.id === mov.itemId);
-            const project = mov.projectId ? state.projects.find((p) => p.id === mov.projectId) : null;
-            return (
-              <div
-                key={mov.id}
-                className="tableRow"
-                style={{ gridTemplateColumns: "1fr 1.8fr 0.8fr 1fr 1.8fr" }}
-              >
-                <div>
-                  <div style={{ fontWeight: 600 }}>{mov.occurredAt}</div>
-                  <div className="muted" style={{ fontSize: 11 }}>{mov.id}</div>
-                </div>
-                <div>
-                  <div style={{ fontWeight: 600 }}>{item?.name ?? mov.itemId}</div>
-                  <div className="muted" style={{ fontSize: 12 }}>{item?.code}</div>
-                </div>
-                <div>
-                  {mov.type === "IN" ? (
-                    <span className="badge badge-success">MASUK (IN)</span>
-                  ) : (
-                    <span className="badge badge-info">KELUAR (OUT)</span>
-                  )}
-                </div>
-                <div style={{ textAlign: "right", fontWeight: 700 }}>
-                  {mov.type === "IN" ? "+" : "-"}{mov.qty} {item?.unit ?? "unit"}
-                </div>
-                <div>
-                  {project ? (
-                    <div style={{ fontWeight: 600, color: "var(--primary)" }}>
-                      Proyek: {project.code} ({project.name})
-                    </div>
-                  ) : (
-                    <div className="muted">Gudang / Non-Proyek</div>
-                  )}
-                  <div className="muted" style={{ fontSize: 12 }}>{mov.notes || "Tanpa catatan"}</div>
-                </div>
-              </div>
-            );
-          })}
-
-          {state.inventoryMovements.length === 0 && (
-            <div className="empty-state">
-              <div>Belum ada riwayat mutasi material tercatat.</div>
+        <div className="table-responsive">
+          <div className="table" style={{ marginTop: 0 }}>
+            <div
+              className="tableRow tableHeader"
+              style={{ gridTemplateColumns: "1fr 1.8fr 0.8fr 1fr 1.8fr" }}
+            >
+              <div>Tanggal</div>
+              <div>Barang</div>
+              <div>Jenis</div>
+              <div style={{ textAlign: "right" }}>Jumlah</div>
+              <div>Alokasi Proyek / Keterangan</div>
             </div>
-          )}
+
+            {state.inventoryMovements.map((mov) => {
+              const item = state.inventoryItems.find((i) => i.id === mov.itemId);
+              const project = mov.projectId ? state.projects.find((p) => p.id === mov.projectId) : null;
+              return (
+                <div
+                  key={mov.id}
+                  className="tableRow"
+                  style={{ gridTemplateColumns: "1fr 1.8fr 0.8fr 1fr 1.8fr" }}
+                >
+                  <div>
+                    <div style={{ fontWeight: 600 }}>{mov.occurredAt}</div>
+                    <div className="muted" style={{ fontSize: 11 }}>{mov.id}</div>
+                  </div>
+                  <div>
+                    <div style={{ fontWeight: 600 }}>{item?.name ?? mov.itemId}</div>
+                    <div className="muted" style={{ fontSize: 12 }}>{item?.code}</div>
+                  </div>
+                  <div>
+                    {mov.type === "IN" ? (
+                      <span className="badge badge-success">MASUK (IN)</span>
+                    ) : (
+                      <span className="badge badge-info">KELUAR (OUT)</span>
+                    )}
+                  </div>
+                  <div style={{ textAlign: "right", fontWeight: 700 }}>
+                    {mov.type === "IN" ? "+" : "-"}{mov.qty} {item?.unit ?? "unit"}
+                  </div>
+                  <div>
+                    {project ? (
+                      <div style={{ fontWeight: 600, color: "var(--primary)" }}>
+                        Proyek: {project.code} ({project.name})
+                      </div>
+                    ) : (
+                      <div className="muted">Gudang / Non-Proyek</div>
+                    )}
+                    <div className="muted" style={{ fontSize: 12 }}>{mov.notes || "Tanpa catatan"}</div>
+                  </div>
+                </div>
+              );
+            })}
+
+            {state.inventoryMovements.length === 0 && (
+              <div className="empty-state">
+                <div>Belum ada riwayat mutasi material tercatat.</div>
+              </div>
+            )}
+          </div>
         </div>
       )}
 
@@ -378,6 +382,7 @@ export function InventoryPage() {
       {showAddModal && (
         <div className="modal-backdrop" onClick={() => setShowAddModal(false)}>
           <div className="modal-card" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-drag-handle mobile-only" />
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
               <h3 style={{ margin: 0 }}>Tambah Material Baru</h3>
               <button className="btn" type="button" onClick={() => setShowAddModal(false)}>✕</button>

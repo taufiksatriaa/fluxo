@@ -79,7 +79,7 @@ export function ReportsPage() {
   const scopeLabel = useMemo(() => {
     if (!projectId) return "Semua project";
     const p = state.projects.find((x) => x.id === projectId);
-    return p ? `${p.code} — ${p.name}` : projectId;
+    return p ? `${p.code}: ${p.name}` : projectId;
   }, [projectId, state.projects]);
 
   const groups = useMemo(() => {
@@ -121,11 +121,11 @@ export function ReportsPage() {
           rows.push({
             key: `${p.id}:${sec.id}:${it.id}`,
             projectId: p.id,
-            projectLabel: `${p.code} — ${p.name}`,
+            projectLabel: `${p.code}: ${p.name}`,
             sectionId: sec.id,
-            sectionLabel: `Section ${sec.code} — ${sec.title}`,
+            sectionLabel: `Section ${sec.code}: ${sec.title}`,
             itemId: it.id,
-            itemLabel: `Item ${it.no} — ${it.title}`,
+            itemLabel: `Item ${it.no}: ${it.title}`,
             planned,
             actual,
             progressPct,
@@ -161,10 +161,10 @@ export function ReportsPage() {
 
   return (
     <div className="container">
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 12 }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 12, flexWrap: "wrap" }}>
         <div>
-          <h2 style={{ margin: 0 }}>Laporan</h2>
-          <div className="muted">Ringkasan cashflow (approved) + budget vs realisasi.</div>
+          <h2 style={{ margin: 0 }}>Laporan Keuangan & Progress</h2>
+          <div className="muted">Ringkasan cashflow disetujui serta evaluasi serapan budget vs realisasi.</div>
         </div>
         <div className="muted" style={{ fontSize: 12 }}>
           {report.count} transaksi (filter)
@@ -172,147 +172,159 @@ export function ReportsPage() {
       </div>
 
       <div className="card" style={{ marginTop: 12 }}>
-        <div className="label">Filter</div>
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(12, 1fr)", gap: 12, marginTop: 10 }}>
-          <div style={{ gridColumn: "span 6" }}>
+        <div className="label">Filter Laporan</div>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 12, marginTop: 10 }}>
+          <div>
             <div className="label">Project</div>
             <select className="input" value={projectId} onChange={(e) => setProjectId(e.target.value)}>
               <option value="">Semua project</option>
               {state.projects.map((p) => (
                 <option key={p.id} value={p.id}>
-                  {p.code} — {p.name}
+                  {p.code}: {p.name}
                 </option>
               ))}
             </select>
           </div>
-          <div style={{ gridColumn: "span 3" }}>
-            <div className="label">Dari</div>
+          <div>
+            <div className="label">Dari Tanggal</div>
             <input className="input" type="date" value={from} onChange={(e) => setFrom(e.target.value)} />
           </div>
-          <div style={{ gridColumn: "span 3" }}>
-            <div className="label">Sampai</div>
+          <div>
+            <div className="label">Sampai Tanggal</div>
             <input className="input" type="date" value={to} onChange={(e) => setTo(e.target.value)} />
           </div>
         </div>
       </div>
 
-      <div className="grid" style={{ marginTop: 12 }}>
+      <div className="grid grid-kpi" style={{ marginTop: 12 }}>
         <div className="card">
-          <div className="label">Scope</div>
+          <div className="label">Scope Proyek</div>
           <div style={{ marginTop: 8, fontSize: 16, fontWeight: 700 }}>{scopeLabel}</div>
           <div className="muted" style={{ fontSize: 12 }}>
-            Approved saja
+            Hanya transaksi disetujui
           </div>
         </div>
         <div className="card">
           <div className="label">Total IN</div>
-          <div style={{ marginTop: 8, fontSize: 24 }}>{formatIdr(report.totalIn)}</div>
+          <div style={{ marginTop: 8, fontSize: 24, fontWeight: 700, color: "var(--success)" }}>
+            Rp {formatIdr(report.totalIn)}
+          </div>
         </div>
         <div className="card">
           <div className="label">Total OUT</div>
-          <div style={{ marginTop: 8, fontSize: 24 }}>{formatIdr(report.totalOut)}</div>
+          <div style={{ marginTop: 8, fontSize: 24, fontWeight: 700, color: "var(--danger)" }}>
+            Rp {formatIdr(report.totalOut)}
+          </div>
         </div>
         <div className="card">
-          <div className="label">NET</div>
-          <div style={{ marginTop: 8, fontSize: 24 }}>{formatIdr(report.net)}</div>
+          <div className="label">NET Cashflow</div>
+          <div style={{ marginTop: 8, fontSize: 24, fontWeight: 700, color: report.net >= 0 ? "var(--primary)" : "var(--danger)" }}>
+            Rp {formatIdr(report.net)}
+          </div>
         </div>
       </div>
 
-      <div className="grid" style={{ marginTop: 12 }}>
+      <div className="grid grid-kpi" style={{ marginTop: 12 }}>
         <div className="card">
-          <div className="label">Budget (RAB atau Plan)</div>
-          <div style={{ marginTop: 8, fontSize: 24 }}>{formatIdr(report.budgetTotal)}</div>
+          <div className="label">Budget Pagu (RAB / Plan)</div>
+          <div style={{ marginTop: 8, fontSize: 22, fontWeight: 700 }}>Rp {formatIdr(report.budgetTotal)}</div>
           <div className="muted" style={{ fontSize: 12 }}>
-            Jika ada RAB → pakai total RAB, jika tidak → pakai budget plan project
+            Basis referensi dokumen RAB proyek aktif
           </div>
         </div>
         <div className="card">
           <div className="label">Realisasi OUT (Approved)</div>
-          <div style={{ marginTop: 8, fontSize: 24 }}>{formatIdr(report.budgetUsed)}</div>
+          <div style={{ marginTop: 8, fontSize: 22, fontWeight: 700, color: "var(--primary)" }}>
+            Rp {formatIdr(report.budgetUsed)}
+          </div>
         </div>
         <div className="card">
-          <div className="label">Sisa Budget</div>
-          <div style={{ marginTop: 8, fontSize: 24 }}>{formatIdr(report.budgetRemaining)}</div>
-        </div>
-      </div>
-
-      <div className="card" style={{ marginTop: 12 }}>
-        <div className="label">Breakdown OUT per Opsi</div>
-        <div className="table" style={{ marginTop: 10 }}>
-          <div className="tableRow tableHeader" style={{ gridTemplateColumns: "1.2fr 1fr" }}>
-            <div>Opsi</div>
-            <div style={{ textAlign: "right" }}>Total</div>
+          <div className="label">Sisa Pagu Tersedia</div>
+          <div style={{ marginTop: 8, fontSize: 22, fontWeight: 700, color: report.budgetRemaining >= 0 ? "var(--success)" : "var(--danger)" }}>
+            Rp {formatIdr(report.budgetRemaining)}
           </div>
-          {groups.map((g) => (
-            <div key={String(g)} className="tableRow" style={{ gridTemplateColumns: "1.2fr 1fr" }}>
-              <div style={{ fontWeight: 700 }}>{groupLabel(g)}</div>
-              <div style={{ textAlign: "right" }}>{formatIdr(report.outByGroup[g] ?? 0)}</div>
-            </div>
-          ))}
-          {groups.length === 0 ? (
-            <div className="tableRow" style={{ gridTemplateColumns: "1fr" }}>
-              <div className="muted">Belum ada OUT approved di filter ini</div>
-            </div>
-          ) : null}
         </div>
       </div>
 
       <div className="card" style={{ marginTop: 12 }}>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 12 }}>
+        <div className="label">Breakdown OUT per Kelompok Biaya</div>
+        <div className="table-responsive">
+          <div className="table" style={{ marginTop: 10 }}>
+            <div className="tableRow tableHeader" style={{ gridTemplateColumns: "1.2fr 1fr" }}>
+              <div>Kelompok Pengeluaran</div>
+              <div style={{ textAlign: "right" }}>Total Realisasi</div>
+            </div>
+            {groups.map((g) => (
+              <div key={String(g)} className="tableRow" style={{ gridTemplateColumns: "1.2fr 1fr" }}>
+                <div style={{ fontWeight: 700 }}>{groupLabel(g)}</div>
+                <div style={{ textAlign: "right", fontWeight: 600 }}>Rp {formatIdr(report.outByGroup[g] ?? 0)}</div>
+              </div>
+            ))}
+            {groups.length === 0 ? (
+              <div className="tableRow" style={{ gridTemplateColumns: "1fr" }}>
+                <div className="muted">Belum ada pengeluaran disetujui pada filter ini</div>
+              </div>
+            ) : null}
+          </div>
+        </div>
+      </div>
+
+      <div className="card" style={{ marginTop: 12 }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 12, flexWrap: "wrap" }}>
           <div>
-            <div className="label">Laporan Progress per ITEM</div>
-            <h3 style={{ margin: "6px 0 0" }}>Planned (RAB) vs Actual (OUT Approved)</h3>
+            <div className="label">Laporan Progress per ITEM RAB</div>
+            <h3 style={{ margin: "6px 0 0" }}>Planned vs Actual Realisasi</h3>
           </div>
           <div style={{ textAlign: "right" }}>
             <div className="label">Total Planned</div>
-            <div style={{ fontSize: 18, fontWeight: 700 }}>{formatIdr(progressPerItem.totals.planned)}</div>
+            <div style={{ fontSize: 18, fontWeight: 700 }}>Rp {formatIdr(progressPerItem.totals.planned)}</div>
           </div>
         </div>
 
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(12, 1fr)", gap: 12, marginTop: 10 }}>
-          <div style={{ gridColumn: "span 12" }}>
-            <div className="label">Cari item</div>
-            <input className="input" value={itemSearch} onChange={(e) => setItemSearch(e.target.value)} placeholder="project / section / item" />
-          </div>
+        <div style={{ marginTop: 10 }}>
+          <div className="label">Cari item RAB</div>
+          <input className="input" value={itemSearch} onChange={(e) => setItemSearch(e.target.value)} placeholder="Ketik nama proyek, section, atau item pekerjaan..." />
         </div>
 
-        <div className="table" style={{ marginTop: 12 }}>
-          <div className="tableRow tableHeader" style={{ gridTemplateColumns: "1.6fr 1fr 0.8fr 0.8fr 0.8fr" }}>
-            <div>Item</div>
-            <div style={{ textAlign: "right" }}>Progress</div>
-            <div style={{ textAlign: "right" }}>Planned</div>
-            <div style={{ textAlign: "right" }}>Actual</div>
-            <div style={{ textAlign: "right" }}>Sisa</div>
-          </div>
-          {progressPerItem.rows.map((r) => {
-            const remaining = r.planned - r.actual;
-            return (
-              <div key={r.key} className="tableRow" style={{ gridTemplateColumns: "1.6fr 1fr 0.8fr 0.8fr 0.8fr" }}>
-                <div>
-                  <div style={{ fontWeight: 700 }}>{r.itemLabel}</div>
-                  <div className="muted" style={{ fontSize: 12, marginTop: 2 }}>
-                    {r.projectLabel} • {r.sectionLabel}
-                  </div>
-                </div>
-                <div style={{ textAlign: "right" }}>
-                  <div style={{ fontWeight: 700 }}>{r.progressPct}%</div>
-                  <div className="progress" style={{ marginTop: 8 }}>
-                    <div className="progressFill" style={{ width: `${r.progressPct}%` }} />
-                  </div>
-                </div>
-                <div style={{ textAlign: "right" }}>{formatIdr(r.planned)}</div>
-                <div style={{ textAlign: "right" }}>{formatIdr(r.actual)}</div>
-                <div style={{ textAlign: "right" }}>
-                  <span className={remaining < 0 ? "danger" : undefined}>{formatIdr(remaining)}</span>
-                </div>
-              </div>
-            );
-          })}
-          {progressPerItem.rows.length === 0 ? (
-            <div className="tableRow" style={{ gridTemplateColumns: "1fr" }}>
-              <div className="muted">Belum ada RAB item untuk scope/filter ini</div>
+        <div className="table-responsive">
+          <div className="table" style={{ marginTop: 12 }}>
+            <div className="tableRow tableHeader" style={{ gridTemplateColumns: "1.6fr 1fr 0.8fr 0.8fr 0.8fr" }}>
+              <div>Item Pekerjaan</div>
+              <div style={{ textAlign: "right" }}>Progress Serapan</div>
+              <div style={{ textAlign: "right" }}>Planned (Pagu)</div>
+              <div style={{ textAlign: "right" }}>Actual (Realisasi)</div>
+              <div style={{ textAlign: "right" }}>Sisa Pagu</div>
             </div>
-          ) : null}
+            {progressPerItem.rows.map((r) => {
+              const remaining = r.planned - r.actual;
+              return (
+                <div key={r.key} className="tableRow" style={{ gridTemplateColumns: "1.6fr 1fr 0.8fr 0.8fr 0.8fr" }}>
+                  <div>
+                    <div style={{ fontWeight: 700 }}>{r.itemLabel}</div>
+                    <div className="muted" style={{ fontSize: 12, marginTop: 2 }}>
+                      {r.projectLabel} • {r.sectionLabel}
+                    </div>
+                  </div>
+                  <div style={{ textAlign: "right" }}>
+                    <div style={{ fontWeight: 700 }}>{r.progressPct}%</div>
+                    <div className="progress" style={{ marginTop: 8 }}>
+                      <div className="progressFill" style={{ width: `${r.progressPct}%` }} />
+                    </div>
+                  </div>
+                  <div style={{ textAlign: "right" }}>Rp {formatIdr(r.planned)}</div>
+                  <div style={{ textAlign: "right", fontWeight: 600, color: "var(--primary)" }}>Rp {formatIdr(r.actual)}</div>
+                  <div style={{ textAlign: "right", fontWeight: 600 }}>
+                    <span className={remaining < 0 ? "danger" : "success"}>Rp {formatIdr(remaining)}</span>
+                  </div>
+                </div>
+              );
+            })}
+            {progressPerItem.rows.length === 0 ? (
+              <div className="tableRow" style={{ gridTemplateColumns: "1fr" }}>
+                <div className="muted">Belum ada item RAB untuk scope/filter ini</div>
+              </div>
+            ) : null}
+          </div>
         </div>
       </div>
     </div>

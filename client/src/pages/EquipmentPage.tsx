@@ -202,23 +202,23 @@ export function EquipmentPage() {
       </div>
 
       {/* KPI Cards */}
-      <div className="grid" style={{ marginTop: 16 }}>
-        <div className="card" style={{ gridColumn: "span 3" }}>
+      <div className="grid grid-kpi" style={{ marginTop: 16 }}>
+        <div className="card">
           <div className="label">Total Inventaris Alat</div>
           <div className="stat-value">{metrics.total} Unit</div>
           <div className="muted" style={{ fontSize: 12, marginTop: 4 }}>Mesin & perkakas terdaftar</div>
         </div>
-        <div className="card" style={{ gridColumn: "span 3" }}>
+        <div className="card">
           <div className="label">Sedang Dipakai di Proyek</div>
           <div className="stat-value" style={{ color: "var(--primary)" }}>{metrics.inUse} Unit</div>
           <div className="muted" style={{ fontSize: 12, marginTop: 4 }}>Aktif beroperasi di lapangan</div>
         </div>
-        <div className="card" style={{ gridColumn: "span 3" }}>
+        <div className="card">
           <div className="label">Tersedia di Gudang</div>
           <div className="stat-value" style={{ color: "var(--success)" }}>{metrics.available} Unit</div>
           <div className="muted" style={{ fontSize: 12, marginTop: 4 }}>Siap ditugaskan kapan saja</div>
         </div>
-        <div className="card" style={{ gridColumn: "span 3" }}>
+        <div className="card">
           <div className="label">Perbaikan & Rusak</div>
           <div className="stat-value" style={{ color: metrics.maintenance > 0 ? "var(--danger)" : "var(--muted)" }}>
             {metrics.maintenance} Unit
@@ -272,7 +272,8 @@ export function EquipmentPage() {
           </div>
 
           {/* Table */}
-          <div className="table">
+          <div className="table-responsive">
+            <div className="table" style={{ marginTop: 0 }}>
             <div
               className="tableRow tableHeader"
               style={{ gridTemplateColumns: "1fr 2.2fr 1.2fr 1.8fr 1.2fr" }}
@@ -355,70 +356,73 @@ export function EquipmentPage() {
                 <div>Tidak ada peralatan yang sesuai kriteria pencarian.</div>
               </div>
             )}
+            </div>
           </div>
         </div>
       )}
 
       {/* TAB 2: LOGS */}
       {activeTab === "LOGS" && (
-        <div className="table">
-          <div
-            className="tableRow tableHeader"
-            style={{ gridTemplateColumns: "1fr 1.8fr 1fr 1.2fr 1.8fr" }}
-          >
-            <div>Tanggal</div>
-            <div>Peralatan</div>
-            <div>Aksi</div>
-            <div>PIC / Penerima</div>
-            <div>Catatan & Alokasi</div>
-          </div>
-
-          {state.equipmentLogs.map((log) => {
-            const eq = state.equipments.find((e) => e.id === log.equipmentId);
-            const project = log.projectId ? state.projects.find((p) => p.id === log.projectId) : null;
-            return (
-              <div
-                key={log.id}
-                className="tableRow"
-                style={{ gridTemplateColumns: "1fr 1.8fr 1fr 1.2fr 1.8fr" }}
-              >
-                <div>
-                  <div style={{ fontWeight: 600 }}>{log.occurredAt}</div>
-                  <div className="muted" style={{ fontSize: 11 }}>{log.id}</div>
-                </div>
-                <div>
-                  <div style={{ fontWeight: 600 }}>{eq?.name ?? log.equipmentId}</div>
-                  <div className="muted" style={{ fontSize: 12 }}>{eq?.code}</div>
-                </div>
-                <div>
-                  {log.action === "ASSIGN" ? (
-                    <span className="badge badge-info">PENUGASAN PROYEK</span>
-                  ) : log.action === "RETURN" ? (
-                    <span className="badge badge-success">PENGEMBALIAN</span>
-                  ) : (
-                    <span className="badge badge-warning">SERVIS PERBAIKAN</span>
-                  )}
-                </div>
-                <div>
-                  <div style={{ fontWeight: 500, fontSize: 13 }}>{log.pic || "—"}</div>
-                </div>
-                <div>
-                  {project ? (
-                    <div style={{ fontWeight: 600, color: "var(--primary)" }}>
-                      {project.code} — {project.name}
-                    </div>
-                  ) : null}
-                  <div className="muted" style={{ fontSize: 12 }}>{log.note || "Tanpa catatan"}</div>
-                </div>
-              </div>
-            );
-          })}
-
-          {state.equipmentLogs.length === 0 && (
-            <div className="empty-state">
-              <div>Belum ada riwayat penugasan atau servis tercatat.</div>
+        <div className="table-responsive">
+          <div className="table" style={{ marginTop: 0 }}>
+            <div
+              className="tableRow tableHeader"
+              style={{ gridTemplateColumns: "1fr 1.8fr 1fr 1.2fr 1.8fr" }}
+            >
+              <div>Tanggal</div>
+              <div>Peralatan</div>
+              <div>Aksi</div>
+              <div>PIC / Penerima</div>
+              <div>Catatan & Alokasi</div>
             </div>
-          )}
+
+            {state.equipmentLogs.map((log) => {
+              const eq = state.equipments.find((e) => e.id === log.equipmentId);
+              const project = log.projectId ? state.projects.find((p) => p.id === log.projectId) : null;
+              return (
+                <div
+                  key={log.id}
+                  className="tableRow"
+                  style={{ gridTemplateColumns: "1fr 1.8fr 1fr 1.2fr 1.8fr" }}
+                >
+                  <div>
+                    <div style={{ fontWeight: 600 }}>{log.occurredAt}</div>
+                    <div className="muted" style={{ fontSize: 11 }}>{log.id}</div>
+                  </div>
+                  <div>
+                    <div style={{ fontWeight: 600 }}>{eq?.name ?? log.equipmentId}</div>
+                    <div className="muted" style={{ fontSize: 12 }}>{eq?.code}</div>
+                  </div>
+                  <div>
+                    {log.action === "ASSIGN" ? (
+                      <span className="badge badge-info">PENUGASAN PROYEK</span>
+                    ) : log.action === "RETURN" ? (
+                      <span className="badge badge-success">PENGEMBALIAN</span>
+                    ) : (
+                      <span className="badge badge-warning">SERVIS PERBAIKAN</span>
+                    )}
+                  </div>
+                  <div>
+                    <div style={{ fontWeight: 500, fontSize: 13 }}>{log.pic || "-"}</div>
+                  </div>
+                  <div>
+                    {project ? (
+                      <div style={{ fontWeight: 600, color: "var(--primary)" }}>
+                        {project.code}: {project.name}
+                      </div>
+                    ) : null}
+                    <div className="muted" style={{ fontSize: 12 }}>{log.note || "Tanpa catatan"}</div>
+                  </div>
+                </div>
+              );
+            })}
+
+            {state.equipmentLogs.length === 0 && (
+              <div className="empty-state">
+                <div>Belum ada riwayat penugasan atau servis tercatat.</div>
+              </div>
+            )}
+          </div>
         </div>
       )}
 
@@ -426,6 +430,7 @@ export function EquipmentPage() {
       {showAddModal && (
         <div className="modal-backdrop" onClick={() => setShowAddModal(false)}>
           <div className="modal-card" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-drag-handle mobile-only" />
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
               <h3 style={{ margin: 0 }}>Tambah Peralatan Baru</h3>
               <button className="btn" type="button" onClick={() => setShowAddModal(false)}>✕</button>
@@ -499,12 +504,13 @@ export function EquipmentPage() {
       {assignModalItem && (
         <div className="modal-backdrop" onClick={() => setAssignModalItem(null)}>
           <div className="modal-card" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-drag-handle mobile-only" />
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
               <h3 style={{ margin: 0 }}>Tugaskan Alat ke Proyek</h3>
               <button className="btn" type="button" onClick={() => setAssignModalItem(null)}>✕</button>
             </div>
             <div style={{ padding: "10px 12px", background: "#f8fafc", borderRadius: 8, marginBottom: 14 }}>
-              <div style={{ fontWeight: 600 }}>{assignModalItem.code} — {assignModalItem.name}</div>
+              <div style={{ fontWeight: 600 }}>{assignModalItem.code}: {assignModalItem.name}</div>
               <div className="muted" style={{ fontSize: 12 }}>Kategori: {assignModalItem.category}</div>
             </div>
             <form onSubmit={handleAssignSubmit} style={{ display: "grid", gap: 12 }}>
@@ -518,7 +524,7 @@ export function EquipmentPage() {
                 >
                   {state.projects.map((p) => (
                     <option key={p.id} value={p.id}>
-                      {p.code} — {p.name} (Status: {p.status})
+                      {p.code}: {p.name} (Status: {p.status})
                     </option>
                   ))}
                 </select>
@@ -570,12 +576,13 @@ export function EquipmentPage() {
       {returnModalItem && (
         <div className="modal-backdrop" onClick={() => setReturnModalItem(null)}>
           <div className="modal-card" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-drag-handle mobile-only" />
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
               <h3 style={{ margin: 0 }}>Pengembalian Alat</h3>
               <button className="btn" type="button" onClick={() => setReturnModalItem(null)}>✕</button>
             </div>
             <div style={{ padding: "10px 12px", background: "#f8fafc", borderRadius: 8, marginBottom: 14 }}>
-              <div style={{ fontWeight: 600 }}>{returnModalItem.code} — {returnModalItem.name}</div>
+              <div style={{ fontWeight: 600 }}>{returnModalItem.code}: {returnModalItem.name}</div>
               <div className="muted" style={{ fontSize: 12 }}>
                 Saat ini di: {returnModalItem.location} ({returnModalItem.assignedTo ?? "Tanpa PIC"})
               </div>

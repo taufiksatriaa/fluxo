@@ -15,6 +15,8 @@ function clampPct(value: number) {
 export function ProjectsPage() {
   const { state, actions } = useAppStore();
   const projects = state.projects;
+  const role = state.currentUser.role;
+  const canEdit = role === "ADMIN";
 
   const [filters, setFilters] = useState<{
     status: "" | ProjectStatus;
@@ -75,7 +77,7 @@ export function ProjectsPage() {
   }, [draft.budgetTotal, draft.code, draft.name, draft.owner]);
 
   const addProject = () => {
-    if (!canCreate) return;
+    if (!canEdit || !canCreate) return;
     const budgetPlanTotal = Number(draft.budgetTotal) || 0;
     actions.createProject({
       code: draft.code,
@@ -89,10 +91,12 @@ export function ProjectsPage() {
   };
 
   const updateProjectProgress = (id: string, progressPct: number) => {
+    if (!canEdit) return;
     actions.updateProject(id, { progressPct: clampPct(progressPct) });
   };
 
   const updateProjectStatus = (id: string, status: ProjectStatus) => {
+    if (!canEdit) return;
     actions.updateProject(id, { status });
   };
 
@@ -118,23 +122,23 @@ export function ProjectsPage() {
         <div style={{ display: "grid", gridTemplateColumns: "repeat(12, 1fr)", gap: 12, marginTop: 10 }}>
           <div style={{ gridColumn: "span 2" }}>
             <div className="label">Kode</div>
-            <input className="input" value={draft.code} onChange={(e) => setDraft((p) => ({ ...p, code: e.target.value }))} />
+            <input className="input" value={draft.code} onChange={(e) => setDraft((p) => ({ ...p, code: e.target.value }))} disabled={!canEdit} />
           </div>
           <div style={{ gridColumn: "span 4" }}>
             <div className="label">Nama</div>
-            <input className="input" value={draft.name} onChange={(e) => setDraft((p) => ({ ...p, name: e.target.value }))} />
+            <input className="input" value={draft.name} onChange={(e) => setDraft((p) => ({ ...p, name: e.target.value }))} disabled={!canEdit} />
           </div>
           <div style={{ gridColumn: "span 2" }}>
             <div className="label">Owner</div>
-            <input className="input" value={draft.owner} onChange={(e) => setDraft((p) => ({ ...p, owner: e.target.value }))} />
+            <input className="input" value={draft.owner} onChange={(e) => setDraft((p) => ({ ...p, owner: e.target.value }))} disabled={!canEdit} />
           </div>
           <div style={{ gridColumn: "span 2" }}>
             <div className="label">Mulai</div>
-            <input className="input" type="date" value={draft.startDate} onChange={(e) => setDraft((p) => ({ ...p, startDate: e.target.value }))} />
+            <input className="input" type="date" value={draft.startDate} onChange={(e) => setDraft((p) => ({ ...p, startDate: e.target.value }))} disabled={!canEdit} />
           </div>
           <div style={{ gridColumn: "span 2" }}>
             <div className="label">Selesai</div>
-            <input className="input" type="date" value={draft.endDate} onChange={(e) => setDraft((p) => ({ ...p, endDate: e.target.value }))} />
+            <input className="input" type="date" value={draft.endDate} onChange={(e) => setDraft((p) => ({ ...p, endDate: e.target.value }))} disabled={!canEdit} />
           </div>
           <div style={{ gridColumn: "span 3" }}>
             <div className="label">Budget Total</div>
@@ -142,10 +146,11 @@ export function ProjectsPage() {
               className="input"
               value={draft.budgetTotal}
               onChange={(e) => setDraft((p) => ({ ...p, budgetTotal: e.target.value }))}
+              disabled={!canEdit}
             />
           </div>
           <div style={{ gridColumn: "span 9", display: "flex", justifyContent: "flex-end", alignItems: "end" }}>
-            <button className="btn primary" disabled={!canCreate} onClick={addProject}>
+            <button className="btn primary" disabled={!canEdit || !canCreate} onClick={addProject}>
               Tambah
             </button>
           </div>
@@ -212,7 +217,7 @@ export function ProjectsPage() {
                 </div>
 
                 <div>
-                  <select className="input" value={p.status} onChange={(e) => updateProjectStatus(p.id, e.target.value as ProjectStatus)}>
+                  <select className="input" value={p.status} onChange={(e) => updateProjectStatus(p.id, e.target.value as ProjectStatus)} disabled={!canEdit}>
                     <option value="PLANNING">PLANNING</option>
                     <option value="RUNNING">RUNNING</option>
                     <option value="DONE">DONE</option>
@@ -230,6 +235,7 @@ export function ProjectsPage() {
                     style={{ marginTop: 10, textAlign: "right" }}
                     value={String(p.progressPct)}
                     onChange={(e) => updateProjectProgress(p.id, Number(e.target.value))}
+                    disabled={!canEdit}
                   />
                 </div>
 

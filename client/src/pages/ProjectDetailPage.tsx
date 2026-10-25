@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { Link, Navigate, useParams } from "react-router-dom";
 import { calcRabGrandTotal, groupLabel, useAppStore } from "../store/appStore";
-import type { Attachment, Transaction } from "../store/appStore";
+import type { Transaction } from "../store/appStore";
 
 function formatIdr(value: number) {
   return value.toLocaleString("id-ID");
@@ -18,7 +18,11 @@ function formatFileSize(size: number) {
 export function ProjectDetailPage() {
   const { projectId } = useParams();
   const { state } = useAppStore();
+
+  const [activeTab, setActiveTab] = useState<"TRANSACTIONS" | "RAB" | "SDM" | "EQUIPMENT">("TRANSACTIONS");
   const [activeReceiptTxId, setActiveReceiptTxId] = useState<string | null>(null);
+  const [txTypeFilter, setTxTypeFilter] = useState<string>("");
+  const [txSearch, setTxSearch] = useState<string>("");
 
   const project = useMemo(() => state.projects.find((p) => p.id === projectId) ?? null, [projectId, state.projects]);
 
@@ -27,6 +31,19 @@ export function ProjectDetailPage() {
     return c ? c.name : categoryId;
   };
 
+  const rabInfoLabel = (t: Transaction) => {
+    if (!t.rabRef) return null;
+    const doc = state.rabsByProjectId[t.projectId];
+    const sec = doc?.sections.find((s) => s.id === t.rabRef?.sectionId);
+    const item = sec?.items.find((it) => it.id === t.rabRef?.itemId);
+    if (!sec || !item) return null;
+    return {
+      sectionText: `Section ${sec.code}: ${sec.title}`,
+      itemText: `Item ${item.no}: ${item.title}`,
+    };
+  };
+
+  // Transactions of this project
   const transactions = useMemo(() => {
     if (!projectId) return [];
     return state.transactions
@@ -34,259 +51,491 @@ export function ProjectDetailPage() {
       .sort((a, b) => b.occurredAt.localeCompare(a.occurredAt));
   }, [projectId, state.transactions]);
 
+  const filteredTransactions = useMemo(() => {
+    const q = txSearch.trim().toLowerCase();
+    return transactions.filter((t) => {
+      if (txTypeFilter && t.type !== txTypeFilter) return false;
+      if (!q) return true;
+      return t.description.toLowerCase().includes(q) || categoryLabel(t.categoryId).toLowerCase().includes(q);
+    });
+  }, [transactions, txTypeFilter, txSearch]);
+
   const activeReceiptTx: Transaction | null = useMemo(() => {
     if (!activeReceiptTxId) return null;
     return state.transactions.find((t) => t.id === activeReceiptTxId) ?? null;
   }, [activeReceiptTxId, state.transactions]);
 
+  // Financial Summary
   const summary = useMemo(() => {
     const approved = transactions.filter((t) => t.approvalStatus === "APPROVED");
     const totalIn = approved.filter((t) => t.type === "IN").reduce((sum, t) => sum + t.amount, 0);
     const totalOut = approved.filter((t) => t.type === "OUT").reduce((sum, t) => sum + t.amount, 0);
     const pendingOut = transactions.filter((t) => t.type === "OUT" && t.approvalStatus === "PENDING").length;
-    return { totalIn, totalOut, net: totalIn - totalOut, pendingOut };
+
+    const outByGroup = approved
+      .filter((t) => t.type === "OUT")
+      .reduce<Record<string, number>>((acc, t) => {
+        acc[t.group] = (acc[t.group] ?? 0) + t.amount;
+        return acc;
+      }, {});
+
+    return { totalIn, totalOut, net: totalIn - totalOut, pendingOut, outByGroup };
   }, [transactions]);
 
+  // RAB Budget & Tracking
+  const rabDoc = useMemo(() => (projectId ? state.rabsByProjectId[projectId] : undefined), [projectId, state.rabsByProjectId]);
   const budgetTotal = useMemo(() => {
-    if (!projectId) return 0;
-    const rab = state.rabsByProjectId[projectId];
-    if (rab) return calcRabGrandTotal(rab);
+    if (rabDoc) return calcRabGrandTotal(rabDoc);
     return project?.budgetPlanTotal ?? 0;
-  }, [project?.budgetPlanTotal, projectId, state.rabsByProjectId]);
+  }, [project?.budgetPlanTotal, rabDoc]);
 
-  const budgetUsed = useMemo(() => {
-    return transactions
-      .filter((t) => t.type === "OUT" && t.approvalStatus === "APPROVED")
-      .reduce((sum, t) => sum + t.amount, 0);
-  }, [transactions]);
-
+  const budgetUsed = summary.totalOut;
   const budgetRemaining = budgetTotal - budgetUsed;
+  const usedPct = budgetTotal > 0 ? Math.round((budgetUsed / budgetTotal) * 100) : 0;
 
-  if (!projectId) return <Navigate to="/projects" replace />;
-  if (!project) return <Navigate to="/projects" replace />;
+  // Wages for this project
+  const projectWages = useMemo(() => {
+    if (!projectId) return [];
+    return state.wagePayments.filter((w) => w.projectId === projectId);
+  }, [projectId, state.wagePayments]);
+
+  const totalWagesPaid = useMemo(() => projectWages.reduce((sum, w) => sum + w.amount, 0), [projectWages]);
+
+  // Equipment assigned to this project
+  const projectEquipments = useMemo(() => {
+    if (!projectId) return [];
+    return state.equipments.filter((e) => e.currentProjectId === projectId);
+  }, [projectId, state.equipments]);
+
+  if (!projectId || !project) return <Navigate to="/projects" replace />;
 
   return (
     <div className="container">
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 12 }}>
+      {/* Back button & Title */}
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", flexWrap: "wrap", gap: 12 }}>
         <div>
-          <div className="muted" style={{ fontSize: 12 }}>
-            <Link to="/projects">← Kembali</Link>
+          <div className="muted" style={{ fontSize: 13, marginBottom: 4 }}>
+            <Link to="/projects">← Kembali ke Daftar Proyek</Link>
           </div>
-          <h2 style={{ margin: "6px 0 0" }}>
+          <h2 style={{ margin: "2px 0 0" }}>
             {project.code} — {project.name}
           </h2>
-          <div className="muted" style={{ marginTop: 6 }}>
-            Owner: {project.owner} • Status: {project.status} • Progress: {project.progressPct}%
+          <div className="muted" style={{ marginTop: 4, fontSize: 13 }}>
+            Owner: <strong>{project.owner}</strong> • Periode: {project.startDate} s/d {project.endDate} • Status:{" "}
+            <span className="badge badge-info">{project.status}</span>
           </div>
         </div>
-        <div style={{ textAlign: "right" }}>
-          <div className="label">Update</div>
-          <div className="muted">{project.updatedAt}</div>
+        <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+          <Link className="btn" to={`/budgets?projectId=${encodeURIComponent(projectId)}`}>
+            Buka Dokumen RAB ↗
+          </Link>
+          <Link className="btn primary" to="/transactions">
+            + Tambah Transaksi
+          </Link>
         </div>
       </div>
 
-      <div className="grid" style={{ marginTop: 12 }}>
-        <div className="card">
-          <div className="label">Kas Masuk (Approved)</div>
-          <div style={{ marginTop: 8, fontSize: 24 }}>{formatIdr(summary.totalIn)}</div>
-        </div>
-        <div className="card">
-          <div className="label">Kas Keluar (Approved)</div>
-          <div style={{ marginTop: 8, fontSize: 24 }}>{formatIdr(summary.totalOut)}</div>
-        </div>
-        <div className="card">
-          <div className="label">NET</div>
-          <div style={{ marginTop: 8, fontSize: 24 }}>{formatIdr(summary.net)}</div>
-        </div>
-        <div className="card">
-          <div className="label">OUT Pending</div>
-          <div style={{ marginTop: 8, fontSize: 24 }}>{summary.pendingOut}</div>
-        </div>
-      </div>
-
-      <div className="grid" style={{ marginTop: 12 }}>
-        <div className="card">
-          <div className="label">Budget Total (RAB atau Plan)</div>
-          <div style={{ marginTop: 8, fontSize: 24 }}>{formatIdr(budgetTotal)}</div>
-          <div className="muted" style={{ fontSize: 12 }}>
-            {state.rabsByProjectId[projectId] ? "Sumber: RAB" : "Sumber: Budget plan"}
-          </div>
-        </div>
-        <div className="card">
-          <div className="label">Realisasi OUT (Approved)</div>
-          <div style={{ marginTop: 8, fontSize: 24 }}>{formatIdr(budgetUsed)}</div>
-        </div>
-        <div className="card">
-          <div className="label">Sisa Budget</div>
-          <div style={{ marginTop: 8, fontSize: 24 }}>{formatIdr(budgetRemaining)}</div>
-        </div>
-        <div className="card">
-          <div className="label">Aksi</div>
-          <div style={{ marginTop: 10, display: "flex", gap: 8, flexWrap: "wrap" }}>
-            <Link className="btn" to="/transactions">
-              Buka Transaksi
-            </Link>
-            <Link className="btn" to="/approvals">
-              Buka Approval
-            </Link>
-            <Link className="btn" to="/budgets">
-              Buka RAB
-            </Link>
-          </div>
-          <div className="muted" style={{ marginTop: 10, fontSize: 12 }}>
-            Tips: untuk sementara filter transaksi manual berdasarkan project di menu Transaksi.
-          </div>
-        </div>
-      </div>
-
-      <div className="card" style={{ marginTop: 12 }}>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
-          <div className="label">Daftar Transaksi Project</div>
-          <div className="muted" style={{ fontSize: 12 }}>
-            {transactions.length} transaksi
+      {/* Primary KPI Cards */}
+      <div className="grid" style={{ marginTop: 16 }}>
+        <div className="card" style={{ gridColumn: "span 3" }}>
+          <div className="label">Pagu Total Anggaran</div>
+          <div className="stat-value">Rp {formatIdr(budgetTotal)}</div>
+          <div className="muted" style={{ fontSize: 12, marginTop: 4 }}>
+            {rabDoc ? "Berdasarkan rincian RAB" : "Berdasarkan Budget Plan"}
           </div>
         </div>
 
-        <div className="table" style={{ marginTop: 10 }}>
+        <div className="card" style={{ gridColumn: "span 3" }}>
+          <div className="label">Realisasi Kas Keluar</div>
+          <div className="stat-value" style={{ color: "var(--primary)" }}>
+            Rp {formatIdr(budgetUsed)}
+          </div>
+          <div className="muted" style={{ fontSize: 12, marginTop: 4 }}>
+            {usedPct}% dari pagu anggaran terserap
+          </div>
+        </div>
+
+        <div className="card" style={{ gridColumn: "span 3" }}>
+          <div className="label">Sisa Anggaran Proyek</div>
           <div
-            className="tableRow tableHeader"
-            style={{ gridTemplateColumns: "1.1fr 1.8fr 0.6fr 0.8fr 0.8fr 0.7fr" }}
+            className="stat-value"
+            style={{ color: budgetRemaining >= 0 ? "var(--success)" : "var(--danger)" }}
           >
-            <div>Tanggal</div>
-            <div>Detail</div>
-            <div style={{ textAlign: "right" }}>Tipe</div>
-            <div style={{ textAlign: "right" }}>Nominal</div>
-            <div style={{ textAlign: "right" }}>Status</div>
-            <div style={{ textAlign: "right" }}>Bukti</div>
+            Rp {formatIdr(budgetRemaining)}
           </div>
+          <div className="muted" style={{ fontSize: 12, marginTop: 4 }}>
+            {budgetRemaining >= 0 ? "Anggaran masih surplus" : "Melebihi pagu anggaran (Defisit)!"}
+          </div>
+        </div>
 
-          {transactions.map((t) => (
-            <div
-              key={t.id}
-              className="tableRow"
-              style={{ gridTemplateColumns: "1.1fr 1.8fr 0.6fr 0.8fr 0.8fr 0.7fr" }}
-            >
-              <div>
-                <div style={{ fontWeight: 700 }}>{t.occurredAt}</div>
-                <div className="muted" style={{ fontSize: 12 }}>
-                  {t.id}
-                </div>
-              </div>
-              <div>
-                <div style={{ fontWeight: 700 }}>
-                  {groupLabel(t.group)} • {categoryLabel(t.categoryId)}
-                </div>
-                <div className="muted" style={{ fontSize: 12, marginTop: 2 }}>
-                  {t.description}
-                </div>
-              </div>
-              <div style={{ textAlign: "right", fontWeight: 700 }}>{t.type}</div>
-              <div style={{ textAlign: "right" }}>{formatIdr(t.amount)}</div>
-              <div style={{ textAlign: "right" }}>
-                <span className={t.approvalStatus === "REJECTED" ? "danger" : undefined}>{t.approvalStatus}</span>
-              </div>
-              <div style={{ textAlign: "right" }}>
-                {t.attachments.length > 0 ? (
-                  <button className="btn" type="button" onClick={() => setActiveReceiptTxId(t.id)}>
-                    Lihat ({t.attachments.length})
-                  </button>
-                ) : (
-                  <span className="muted">—</span>
-                )}
-              </div>
-            </div>
-          ))}
-
-          {transactions.length === 0 ? (
-            <div className="tableRow" style={{ gridTemplateColumns: "1fr" }}>
-              <div className="muted">Belum ada transaksi untuk project ini</div>
-            </div>
-          ) : null}
+        <div className="card" style={{ gridColumn: "span 3" }}>
+          <div className="label">Progress Pelaksanaan Fisik</div>
+          <div className="stat-value" style={{ color: "var(--primary)" }}>
+            {project.progressPct}%
+          </div>
+          <div className="progress" style={{ marginTop: 8 }}>
+            <div className="progressFill" style={{ width: `${project.progressPct}%` }} />
+          </div>
         </div>
       </div>
 
+      {/* Cashflow Breakdown per Group */}
+      <div className="card" style={{ marginTop: 14 }}>
+        <div className="label">Distribusi Pengeluaran Disetujui (OUT)</div>
+        <div className="grid" style={{ marginTop: 8 }}>
+          <div className="card" style={{ gridColumn: "span 3", background: "#f8fafc" }}>
+            <div className="label">Material</div>
+            <div style={{ fontWeight: 700, fontSize: 16, marginTop: 2 }}>
+              Rp {formatIdr(summary.outByGroup["MATERIAL"] ?? 0)}
+            </div>
+          </div>
+          <div className="card" style={{ gridColumn: "span 3", background: "#f8fafc" }}>
+            <div className="label">Upah Tenaga Kerja</div>
+            <div style={{ fontWeight: 700, fontSize: 16, marginTop: 2 }}>
+              Rp {formatIdr(summary.outByGroup["UPAH"] ?? 0)}
+            </div>
+          </div>
+          <div className="card" style={{ gridColumn: "span 3", background: "#f8fafc" }}>
+            <div className="label">Operasional & Logistik</div>
+            <div style={{ fontWeight: 700, fontSize: 16, marginTop: 2 }}>
+              Rp {formatIdr(summary.outByGroup["OPERASIONAL"] ?? 0)}
+            </div>
+          </div>
+          <div className="card" style={{ gridColumn: "span 3", background: "#f8fafc" }}>
+            <div className="label">Lain-Lain (Overhead)</div>
+            <div style={{ fontWeight: 700, fontSize: 16, marginTop: 2 }}>
+              Rp {formatIdr(summary.outByGroup["OTHER"] ?? 0)}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Navigation Tabs */}
+      <div className="tab-list" style={{ marginTop: 20 }}>
+        <button
+          className={activeTab === "TRANSACTIONS" ? "tab-btn active" : "tab-btn"}
+          onClick={() => setActiveTab("TRANSACTIONS")}
+          type="button"
+        >
+          Riwayat Transaksi ({transactions.length})
+        </button>
+        <button
+          className={activeTab === "RAB" ? "tab-btn active" : "tab-btn"}
+          onClick={() => setActiveTab("RAB")}
+          type="button"
+        >
+          Rincian RAB & Serapan
+        </button>
+        <button
+          className={activeTab === "SDM" ? "tab-btn active" : "tab-btn"}
+          onClick={() => setActiveTab("SDM")}
+          type="button"
+        >
+          Upah Tenaga Kerja ({projectWages.length})
+        </button>
+        <button
+          className={activeTab === "EQUIPMENT" ? "tab-btn active" : "tab-btn"}
+          onClick={() => setActiveTab("EQUIPMENT")}
+          type="button"
+        >
+          Peralatan di Lokasi ({projectEquipments.length})
+        </button>
+      </div>
+
+      {/* TAB 1: TRANSACTIONS */}
+      {activeTab === "TRANSACTIONS" && (
+        <div>
+          {/* Filters */}
+          <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginBottom: 12 }}>
+            <input
+              className="input"
+              style={{ maxWidth: 280 }}
+              placeholder="Cari deskripsi transaksi..."
+              value={txSearch}
+              onChange={(e) => setTxSearch(e.target.value)}
+            />
+            <select
+              className="input"
+              style={{ maxWidth: 160 }}
+              value={txTypeFilter}
+              onChange={(e) => setTxTypeFilter(e.target.value)}
+            >
+              <option value="">Semua Tipe (IN / OUT)</option>
+              <option value="IN">Kas Masuk (IN)</option>
+              <option value="OUT">Kas Keluar (OUT)</option>
+            </select>
+          </div>
+
+          <div className="table">
+            <div
+              className="tableRow tableHeader"
+              style={{ gridTemplateColumns: "1fr 2fr 0.8fr 1fr 1fr 0.8fr" }}
+            >
+              <div>Tanggal</div>
+              <div>Detail & Item RAB</div>
+              <div style={{ textAlign: "right" }}>Tipe</div>
+              <div style={{ textAlign: "right" }}>Nominal</div>
+              <div style={{ textAlign: "right" }}>Status</div>
+              <div style={{ textAlign: "right" }}>Bukti</div>
+            </div>
+
+            {filteredTransactions.map((t) => {
+              const rabInfo = rabInfoLabel(t);
+              return (
+                <div
+                  key={t.id}
+                  className="tableRow"
+                  style={{ gridTemplateColumns: "1fr 2fr 0.8fr 1fr 1fr 0.8fr" }}
+                >
+                  <div>
+                    <div style={{ fontWeight: 600 }}>{t.occurredAt}</div>
+                    <div className="muted" style={{ fontSize: 11 }}>{t.id}</div>
+                  </div>
+                  <div>
+                    <div style={{ fontWeight: 600 }}>
+                      <span className="badge badge-neutral" style={{ marginRight: 6 }}>
+                        {groupLabel(t.group)}
+                      </span>
+                      {categoryLabel(t.categoryId)}: {t.description}
+                    </div>
+                    {rabInfo ? (
+                      <div className="muted" style={{ fontSize: 12, marginTop: 4 }}>
+                        {rabInfo.sectionText} • {rabInfo.itemText}
+                      </div>
+                    ) : null}
+                  </div>
+                  <div style={{ textAlign: "right", fontWeight: 700 }}>
+                    {t.type === "IN" ? (
+                      <span className="badge badge-success">IN</span>
+                    ) : (
+                      <span className="badge badge-info">OUT</span>
+                    )}
+                  </div>
+                  <div style={{ textAlign: "right", fontWeight: 700 }}>
+                    Rp {formatIdr(t.amount)}
+                  </div>
+                  <div style={{ textAlign: "right" }}>
+                    {t.approvalStatus === "APPROVED" ? (
+                      <span className="badge badge-success">APPROVED</span>
+                    ) : t.approvalStatus === "PENDING" ? (
+                      <span className="badge badge-warning">PENDING</span>
+                    ) : (
+                      <div>
+                        <span className="badge badge-danger">REJECTED</span>
+                        {t.rejectionReason ? (
+                          <div className="danger" style={{ fontSize: 11, marginTop: 2 }}>
+                            {t.rejectionReason}
+                          </div>
+                        ) : null}
+                      </div>
+                    )}
+                  </div>
+                  <div style={{ textAlign: "right" }}>
+                    {t.attachments.length > 0 ? (
+                      <button className="btn" type="button" onClick={() => setActiveReceiptTxId(t.id)}>
+                        Lihat ({t.attachments.length})
+                      </button>
+                    ) : (
+                      <span className="muted">—</span>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+
+            {filteredTransactions.length === 0 && (
+              <div className="empty-state">
+                <div>Tidak ada transaksi yang cocok untuk filter ini.</div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* TAB 2: RAB SUMMARY */}
+      {activeTab === "RAB" && (
+        <div className="card">
+          {rabDoc ? (
+            <div>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
+                <div>
+                  <h3 style={{ margin: 0 }}>{rabDoc.title}</h3>
+                  <div className="muted" style={{ fontSize: 12 }}>Update terakhir: {rabDoc.updatedAt}</div>
+                </div>
+                <Link className="btn primary" to={`/budgets?projectId=${encodeURIComponent(projectId)}`}>
+                  Edit RAB di Modul Anggaran ↗
+                </Link>
+              </div>
+
+              <div className="table">
+                <div className="tableRow tableHeader" style={{ gridTemplateColumns: "0.5fr 2fr 1fr 1fr" }}>
+                  <div>Section</div>
+                  <div>Judul Pekerjaan</div>
+                  <div style={{ textAlign: "right" }}>Jumlah Item</div>
+                  <div style={{ textAlign: "right" }}>Subtotal Rencana</div>
+                </div>
+                {rabDoc.sections.map((sec) => {
+                  const secTotal = sec.items.reduce((sum, it) => {
+                    const q = Number(it.qty.replace(/\./g, "").replace(/,/g, ".")) || 0;
+                    const p = Number(it.unitPrice.replace(/\./g, "").replace(/,/g, ".")) || 0;
+                    return sum + q * p;
+                  }, 0);
+                  return (
+                    <div key={sec.id} className="tableRow" style={{ gridTemplateColumns: "0.5fr 2fr 1fr 1fr" }}>
+                      <div style={{ fontWeight: 700 }}>{sec.code}</div>
+                      <div style={{ fontWeight: 600 }}>{sec.title}</div>
+                      <div style={{ textAlign: "right" }}>{sec.items.length} item</div>
+                      <div style={{ textAlign: "right", fontWeight: 700 }}>Rp {formatIdr(secTotal)}</div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          ) : (
+            <div className="empty-state">
+              <div>Belum ada dokumen RAB untuk proyek ini. Proyek masih menggunakan estimasi budget plan.</div>
+              <Link className="btn primary" style={{ marginTop: 10 }} to={`/budgets?projectId=${encodeURIComponent(projectId)}`}>
+                + Susun RAB Proyek Sekarang
+              </Link>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* TAB 3: WAGE / SDM */}
+      {activeTab === "SDM" && (
+        <div>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 12 }}>
+            <div>
+              <h3 style={{ margin: 0 }}>Pembayaran Upah Tenaga Kerja Proyek</h3>
+              <div className="muted" style={{ fontSize: 12 }}>
+                Total terbayar: <strong>Rp {formatIdr(totalWagesPaid)}</strong> dari {projectWages.length} transaksi pembayaran.
+              </div>
+            </div>
+            <Link className="btn" to="/sdm">Buka Modul SDM ↗</Link>
+          </div>
+
+          <div className="table">
+            <div className="tableRow tableHeader" style={{ gridTemplateColumns: "1fr 1.6fr 0.8fr 1fr 1.2fr" }}>
+              <div>Tanggal</div>
+              <div>Tenaga Kerja / Peran</div>
+              <div style={{ textAlign: "right" }}>Hari Kerja</div>
+              <div style={{ textAlign: "right" }}>Total Upah</div>
+              <div>Catatan</div>
+            </div>
+            {projectWages.map((w) => {
+              const emp = state.employees.find((e) => e.id === w.employeeId);
+              return (
+                <div key={w.id} className="tableRow" style={{ gridTemplateColumns: "1fr 1.6fr 0.8fr 1fr 1.2fr" }}>
+                  <div>{w.occurredAt}</div>
+                  <div>
+                    <div style={{ fontWeight: 600 }}>{emp?.name ?? w.employeeId}</div>
+                    <div className="muted" style={{ fontSize: 12 }}>{emp?.roleTitle} • Rp {formatIdr(w.dailyRate)}/hari</div>
+                  </div>
+                  <div style={{ textAlign: "right", fontWeight: 600 }}>{w.days} hari</div>
+                  <div style={{ textAlign: "right", fontWeight: 700, color: "var(--primary)" }}>
+                    Rp {formatIdr(w.amount)}
+                  </div>
+                  <div className="muted" style={{ fontSize: 12 }}>{w.note || "—"}</div>
+                </div>
+              );
+            })}
+            {projectWages.length === 0 && (
+              <div className="empty-state">
+                <div>Belum ada pembayaran upah tenaga kerja tercatat pada proyek ini.</div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* TAB 4: EQUIPMENT */}
+      {activeTab === "EQUIPMENT" && (
+        <div>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 12 }}>
+            <div>
+              <h3 style={{ margin: 0 }}>Peralatan yang Sedang Beroperasi di Lokasi</h3>
+              <div className="muted" style={{ fontSize: 12 }}>
+                {projectEquipments.length} unit alat berat & mesin ditugaskan di proyek ini.
+              </div>
+            </div>
+            <Link className="btn" to="/equipment">Kelola Semua Peralatan ↗</Link>
+          </div>
+
+          <div className="table">
+            <div className="tableRow tableHeader" style={{ gridTemplateColumns: "1fr 2fr 1fr 1.2fr 1fr" }}>
+              <div>Kode Alat</div>
+              <div>Nama Alat & Kategori</div>
+              <div>Kondisi</div>
+              <div>PIC Penanggung Jawab</div>
+              <div>Tanggal Penugasan</div>
+            </div>
+            {projectEquipments.map((eq) => (
+              <div key={eq.id} className="tableRow" style={{ gridTemplateColumns: "1fr 2fr 1fr 1.2fr 1fr" }}>
+                <div style={{ fontWeight: 600 }}>{eq.code}</div>
+                <div>
+                  <div style={{ fontWeight: 600 }}>{eq.name}</div>
+                  <div className="muted" style={{ fontSize: 12 }}>{eq.category}</div>
+                </div>
+                <div>
+                  <span className={eq.condition === "BAIK" ? "badge badge-success" : "badge badge-warning"}>
+                    {eq.condition}
+                  </span>
+                </div>
+                <div style={{ fontWeight: 500 }}>{eq.assignedTo || "—"}</div>
+                <div className="muted">{eq.assignedDate || "—"}</div>
+              </div>
+            ))}
+            {projectEquipments.length === 0 && (
+              <div className="empty-state">
+                <div>Tidak ada peralatan kerja yang sedang ditugaskan di lokasi proyek ini.</div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* MODAL RECEIPT */}
       {activeReceiptTx ? (
-        <ReceiptModal
-          title={`Bukti transaksi ${activeReceiptTx.id}`}
-          subtitle={`${groupLabel(activeReceiptTx.group)} • ${categoryLabel(activeReceiptTx.categoryId)} • ${formatIdr(activeReceiptTx.amount)}`}
-          attachments={activeReceiptTx.attachments}
-          onClose={() => setActiveReceiptTxId(null)}
-        />
+        <div className="modal-backdrop" onClick={() => setActiveReceiptTxId(null)}>
+          <div className="modal-card" style={{ maxWidth: 700 }} onClick={(e) => e.stopPropagation()}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
+              <div>
+                <div className="label">Bukti Transaksi</div>
+                <h3 style={{ margin: "2px 0 0" }}>{activeReceiptTx.id}</h3>
+                <div className="muted" style={{ fontSize: 12 }}>
+                  Nominal: <strong>Rp {formatIdr(activeReceiptTx.amount)}</strong> ({activeReceiptTx.description})
+                </div>
+              </div>
+              <button className="btn" type="button" onClick={() => setActiveReceiptTxId(null)}>✕ Tutup</button>
+            </div>
+
+            <div style={{ display: "grid", gap: 12 }}>
+              {activeReceiptTx.attachments.map((a) => {
+                const isImage = a.mimeType.startsWith("image/") || a.url.startsWith("data:image/");
+                return (
+                  <div key={a.id} style={{ border: "1px solid var(--border)", borderRadius: 8, padding: 10 }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
+                      <div>
+                        <div style={{ fontWeight: 600, fontSize: 13 }}>{a.name}</div>
+                        <div className="muted" style={{ fontSize: 11 }}>{formatFileSize(a.size)} • {a.mimeType || "unknown"}</div>
+                      </div>
+                      <a className="btn" href={a.url} target="_blank" rel="noreferrer" style={{ fontSize: 12 }}>
+                        Buka di Tab Baru ↗
+                      </a>
+                    </div>
+                    {isImage ? (
+                      <div style={{ textAlign: "center", background: "#f8fafc", padding: 8, borderRadius: 6 }}>
+                        <img src={a.url} alt={a.name} style={{ maxWidth: "100%", maxHeight: 320, objectFit: "contain", borderRadius: 4 }} />
+                      </div>
+                    ) : null}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </div>
       ) : null}
     </div>
   );
 }
-
-function ReceiptModal({
-  title,
-  subtitle,
-  attachments,
-  onClose,
-}: {
-  title: string;
-  subtitle: string;
-  attachments: Attachment[];
-  onClose: () => void;
-}) {
-  return (
-    <div
-      role="dialog"
-      aria-modal="true"
-      onClick={onClose}
-      style={{
-        position: "fixed",
-        inset: 0,
-        background: "rgba(0,0,0,0.55)",
-        display: "flex",
-        justifyContent: "center",
-        alignItems: "center",
-        padding: 16,
-      }}
-    >
-      <div className="card" onClick={(e) => e.stopPropagation()} style={{ width: "min(900px, 100%)", maxHeight: "80vh", overflow: "auto" }}>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 12 }}>
-          <div>
-            <div className="label">Bukti transaksi</div>
-            <h3 style={{ margin: "6px 0 0" }}>{title}</h3>
-          </div>
-          <button className="btn" type="button" onClick={onClose}>
-            Tutup
-          </button>
-        </div>
-        <div className="muted" style={{ marginTop: 8, fontSize: 12 }}>
-          {subtitle}
-        </div>
-
-        <div className="table" style={{ marginTop: 12 }}>
-          <div className="tableRow tableHeader" style={{ gridTemplateColumns: "1.6fr 0.7fr 0.7fr" }}>
-            <div>File</div>
-            <div style={{ textAlign: "right" }}>Ukuran</div>
-            <div style={{ textAlign: "right" }}>Aksi</div>
-          </div>
-          {attachments.map((a) => (
-            <div key={a.id} className="tableRow" style={{ gridTemplateColumns: "1.6fr 0.7fr 0.7fr" }}>
-              <div>
-                <div style={{ fontWeight: 600 }}>{a.name}</div>
-                <div className="muted" style={{ fontSize: 12, marginTop: 2 }}>
-                  {a.mimeType || "unknown"}
-                </div>
-              </div>
-              <div style={{ textAlign: "right" }}>{formatFileSize(a.size)}</div>
-              <div style={{ textAlign: "right" }}>
-                <a className="btn" href={a.url} target="_blank" rel="noreferrer">
-                  Buka
-                </a>
-              </div>
-            </div>
-          ))}
-          {attachments.length === 0 ? (
-            <div className="tableRow" style={{ gridTemplateColumns: "1fr" }}>
-              <div className="muted">Tidak ada bukti</div>
-            </div>
-          ) : null}
-        </div>
-      </div>
-    </div>
-  );
-}
-
